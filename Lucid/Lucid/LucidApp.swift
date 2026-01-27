@@ -8,14 +8,11 @@ struct LucidApp: App {
         WindowGroup {
             ContentView()
                 .environment(monitor)
+                .frame(minWidth: 1100, minHeight: 750)
+                .onAppear {
+                    monitor.start()
+                }
         }
         .windowStyle(.hiddenTitleBar)
-        .windowResizability(.contentMinSize(CGSize(width: 1100, height: 750)))
-        .onAppear {
-            monitor.start()
-        }
-        .onDisappear {
-            monitor.stop()
-        }
     }
 }

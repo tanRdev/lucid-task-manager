@@ -38,16 +38,3 @@ struct MetricCardView: View {
         .cornerRadius(8)
     }
 }
-
-#Preview {
-    MetricCardView(
-        label: "CPU",
-        value: "45.2%",
-        icon: "cpu",
-        color: Color(red: 1.0, green: 0.35, blue: 0.0),
-        history: [30, 35, 32, 40, 45, 42, 38, 41, 44, 45, 43, 42]
-    )
-    .frame(maxWidth: .infinity)
-    .padding()
-    .background(Color(red: 0.08, green: 0.08, blue: 0.1))
-}

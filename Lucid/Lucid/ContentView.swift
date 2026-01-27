@@ -119,8 +119,9 @@ struct DetailView: View {
                 Button("Kill", role: .destructive) {
                     _ = monitor.killProcess(process)
                     killTarget = nil
-                    try? Task.sleep(nanoseconds: 500_000_000) // 0.5s
-                    monitor.refresh()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        monitor.refresh()
+                    }
                 }
             } message: { process in
                 Text("Are you sure you want to kill \(process.name) (PID: \(process.pid))?")
@@ -128,9 +129,4 @@ struct DetailView: View {
         }
         .background(Color(red: 0.06, green: 0.06, blue: 0.07))
     }
-}
-
-#Preview {
-    ContentView()
-        .environment(ProcessMonitor())
 }

@@ -39,14 +39,3 @@ struct FilterButton: View {
         .cornerRadius(8)
     }
 }
-
-#Preview {
-    VStack(spacing: 8) {
-        FilterButton(label: "All Processes", icon: "square.grid.2x2", count: 150)
-        FilterButton(label: "System", icon: "gearshape.fill", count: 42, isActive: true)
-        FilterButton(label: "User", icon: "person.fill", count: 25)
-        FilterButton(label: "Unknown", icon: "questionmark.circle.fill", count: 12)
-    }
-    .padding()
-    .background(Color(red: 0.08, green: 0.08, blue: 0.1))
-}

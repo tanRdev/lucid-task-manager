@@ -3,7 +3,7 @@ import SwiftUI
 struct HeaderBar: View {
     let processCount: Int
     @Binding var searchText: String
-    @Binding var selectedFilter: ContentView.DetailView.FilterCategory
+    @Binding var selectedFilter: DetailView.FilterCategory
 
     var body: some View {
         HStack(spacing: 16) {
@@ -43,14 +43,4 @@ struct HeaderBar: View {
         .background(Color(red: 0.08, green: 0.08, blue: 0.1))
         .border(Color(red: 0.12, green: 0.12, blue: 0.14), width: 1)
     }
-}
-
-#Preview {
-    HeaderBar(
-        processCount: 42,
-        searchText: .constant(""),
-        selectedFilter: .constant(.all)
-    )
-    .frame(height: 80)
-    .background(Color(red: 0.06, green: 0.06, blue: 0.07))
 }

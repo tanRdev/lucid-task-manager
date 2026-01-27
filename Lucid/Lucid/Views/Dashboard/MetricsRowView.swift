@@ -42,10 +42,3 @@ struct MetricsRowView: View {
         .padding(.horizontal)
     }
 }
-
-#Preview {
-    MetricsRowView()
-        .environment(ProcessMonitor())
-        .padding()
-        .background(Color(red: 0.08, green: 0.08, blue: 0.1))
-}

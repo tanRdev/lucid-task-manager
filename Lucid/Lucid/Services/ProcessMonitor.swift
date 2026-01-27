@@ -16,12 +16,14 @@ final class ProcessMonitor {
     var lastError: String?
 
     // MARK: - Private State
-    private var timer: Timer?
+    private var timer: DispatchSourceTimer?
     private var previousCPUTimes: [pid_t: UInt64] = [:]
     private var previousCPUHistory: [Double] = []
     private var previousMemoryHistory: [Double] = []
-    private let pollInterval: TimeInterval = 2.0
+    private let pollInterval: TimeInterval = 3.0
     private let logger = Logger(subsystem: "com.tan.lucid", category: "ProcessMonitor")
+    private let timerQueue = DispatchQueue(label: "com.tan.lucid.timer", qos: .userInitiated)
+    private var isRefreshing = false
 
     // MARK: - Lifecycle
 
@@ -34,14 +36,18 @@ final class ProcessMonitor {
 
         refresh()
 
-        timer = Timer.scheduledTimer(withTimeInterval: pollInterval, repeats: true) { [weak self] _ in
+        let newTimer = DispatchSource.makeTimerSource(queue: timerQueue)
+        newTimer.schedule(deadline: .now() + pollInterval, repeating: pollInterval)
+        newTimer.setEventHandler { [weak self] in
             self?.refresh()
         }
+        newTimer.resume()
+        timer = newTimer
     }
 
     func stop() {
         isRunning = false
-        timer?.invalidate()
+        timer?.cancel()
         timer = nil
     }
 
@@ -52,63 +58,73 @@ final class ProcessMonitor {
     // MARK: - Process Management
 
     func refresh() {
-        let pids = DarwinProcess.getAllPIDs()
-        let coreCount = ProcessInfo.processInfo.activeProcessorCount
+        guard !isRefreshing else { return }
 
-        var newProcesses: [LucidProcess] = []
-        var currentCPUTimes: [pid_t: UInt64] = [:]
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self else { return }
+            self.isRefreshing = true
 
-        let elapsedSeconds = pollInterval
+            let pids = DarwinProcess.getAllPIDs()
+            let coreCount = ProcessInfo.processInfo.activeProcessorCount
 
-        for pid in pids {
-            guard let name = DarwinProcess.getProcessName(pid: pid) else { continue }
+            var newProcesses: [LucidProcess] = []
+            var currentCPUTimes: [pid_t: UInt64] = [:]
 
-            let (description, safety) = ProcessDictionary.lookup(name) ?? (name, .unknown)
+            let elapsedSeconds = self.pollInterval
 
-            guard let info = DarwinProcess.getProcessInfo(pid: pid) else {
-                // Root/privileged process - show zero metrics
+            for pid in pids {
+                guard let name = DarwinProcess.getProcessName(pid: pid) else { continue }
+
+                let (description, safety) = ProcessDictionary.lookup(name) ?? (name, .unknown)
+
+                guard let info = DarwinProcess.getProcessInfo(pid: pid) else {
+                    // Root/privileged process - show zero metrics
+                    let process = LucidProcess(
+                        pid: pid,
+                        name: name,
+                        description: description,
+                        cpuUsage: 0,
+                        memoryBytes: 0,
+                        safety: safety,
+                        exePath: DarwinProcess.getProcessPath(pid: pid) ?? ""
+                    )
+                    newProcesses.append(process)
+                    continue
+                }
+
+                currentCPUTimes[pid] = info.cpuNanos
+
+                let previousNanos = self.previousCPUTimes[pid] ?? info.cpuNanos
+                let cpuUsage = DarwinProcess.calculateCPUPercentage(
+                    currentNanos: info.cpuNanos,
+                    previousNanos: previousNanos,
+                    elapsedSeconds: elapsedSeconds,
+                    coreCount: coreCount
+                )
+
                 let process = LucidProcess(
                     pid: pid,
                     name: name,
                     description: description,
-                    cpuUsage: 0,
-                    memoryBytes: 0,
+                    cpuUsage: cpuUsage,
+                    memoryBytes: info.memoryBytes,
                     safety: safety,
                     exePath: DarwinProcess.getProcessPath(pid: pid) ?? ""
                 )
                 newProcesses.append(process)
-                continue
             }
 
-            currentCPUTimes[pid] = info.cpuNanos
-
-            let previousNanos = previousCPUTimes[pid] ?? info.cpuNanos
-            let cpuUsage = DarwinProcess.calculateCPUPercentage(
-                currentNanos: info.cpuNanos,
-                previousNanos: previousNanos,
-                elapsedSeconds: elapsedSeconds,
-                coreCount: coreCount
-            )
-
-            let process = LucidProcess(
-                pid: pid,
-                name: name,
-                description: description,
-                cpuUsage: cpuUsage,
-                memoryBytes: info.memoryBytes,
-                safety: safety,
-                exePath: DarwinProcess.getProcessPath(pid: pid) ?? ""
-            )
-            newProcesses.append(process)
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.previousCPUTimes = currentCPUTimes
+                self.processes = newProcesses.sorted()
+                self.updateSystemStats()
+                self.isRefreshing = false
+            }
         }
-
-        previousCPUTimes = currentCPUTimes
-        processes = newProcesses.sorted()
-
-        updateSystemStats()
     }
 
-    func killProcess(_ process: LucidProcess) -> Result<Void, String> {
+    func killProcess(_ process: LucidProcess) -> Result<Void, DarwinError> {
         DarwinProcess.killProcess(pid: process.pid)
     }
 

@@ -70,9 +70,3 @@ struct SidebarView: View {
         .background(Color(red: 0.08, green: 0.08, blue: 0.1))
     }
 }
-
-#Preview {
-    SidebarView()
-        .environment(ProcessMonitor())
-        .frame(width: 300)
-}

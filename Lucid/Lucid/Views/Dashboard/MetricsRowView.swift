@@ -38,5 +38,6 @@ struct MetricsRowView: View {
             )
         }
         .padding(.horizontal)
+        .padding(.top, 12)
     }
 }

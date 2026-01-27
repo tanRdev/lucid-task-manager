@@ -23,8 +23,8 @@ struct BarSparkline: View {
                 ForEach(enumData, id: \.offset) { index, value in
                     let opacity = barOpacity(for: index)
                     BarMark(
-                        x: .value("Value", value),
-                        y: .value("Index", index)
+                        x: .value("Index", index),
+                        y: .value("Value", value)
                     )
                     .foregroundStyle(color.opacity(opacity))
                 }

@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 
 struct ProcessDictionary {
     private static let dictionary: [String: (String, Safety)] = [
@@ -142,6 +143,149 @@ struct ProcessDictionary {
         "wifip2pd": ("WiFi Peer-to-Peer", .system),
         "XprotectService": ("Malware Protection Service", .system),
 
+        // Shell & Command Line (System)
+        "zsh": ("Z Shell (Command Line)", .system),
+        "bash": ("Bash Shell (Command Line)", .system),
+        "sh": ("Bourne Shell (Command Line)", .system),
+        "fish": ("Fish Shell (Command Line)", .system),
+
+        // XProtect Services (Malware Protection)
+        "XProtectPlugin": ("Malware Protection Plugin", .system),
+        "XProtectPluginService": ("Malware Protection Plugin Service", .system),
+        "XProtectRemediatorEngine": ("Malware Remediation Engine", .system),
+        "XprotectFrameworkService": ("XProtect Framework Service", .system),
+
+        // WiFi & Networking
+        "wifivelocityd": ("WiFi Velocity Daemon", .system),
+        "WiFiDiagnosticsAgent": ("WiFi Diagnostics Agent", .system),
+        "WiFiProximityAgent": ("WiFi Proximity Agent", .system),
+        "WiFiNetworkDiagnostics": ("WiFi Network Diagnostics", .system),
+        "WiFiVelocityAgent": ("WiFi Velocity Agent", .system),
+
+        // Weather Services
+        "WeatherWidget": ("Weather Widget", .system),
+        "weatherd": ("Weather Daemon", .system),
+        "WeatherKitHelper": ("WeatherKit Helper", .system),
+        "WeatherKitService": ("WeatherKit Service", .system),
+
+        // Wallpaper & Desktop
+        "WallpaperAgent": ("Wallpaper Agent", .system),
+        "WallpaperService": ("Wallpaper Service", .system),
+        "wallpaperd": ("Wallpaper Daemon", .system),
+        "WallpaperExtension": ("Wallpaper Extension", .system),
+
+        // Window Server & Graphics
+        "WindowManager": ("Window Manager", .system),
+        "windowserver": ("Window Server", .system),
+        "com.apple.WindowManager": ("Window Manager Service", .system),
+
+        // Siri & Intelligence
+        "Siri": ("Siri Voice Assistant", .system),
+        "SiriNCService": ("Siri Notification Center Service", .system),
+        "assistant_service": ("Assistant Service", .system),
+        "assistantd": ("Assistant Daemon", .system),
+        "SiriKitService": ("SiriKit Service", .system),
+
+        // Spotlight & Search
+        "com.apple.mdworker": ("Spotlight Worker Process", .system),
+
+        // Core Services
+        "coresymbolicationd": ("Core Symbolication Daemon", .system),
+        "coreTelephonyNotificationAgent": ("Telephony Notification Agent", .system),
+        "CoreTimeActivity": ("Core Time Activity", .system),
+        "CoreServicesAccountAgent": ("Core Services Account Agent", .system),
+
+        // Privacy & Security
+        "PrivacyAgent": ("Privacy Agent", .system),
+        "PrivacyService": ("Privacy Service", .system),
+        "privacyd": ("Privacy Daemon", .system),
+
+        // Notification & Communications
+        "NotificationCenter": ("Notification Center", .system),
+        "com.apple.notificationcenterui": ("Notification Center UI", .system),
+        "APNSAgent": ("Apple Push Notification Agent", .system),
+
+        // iCloud Services
+        "iCloudDrive": ("iCloud Drive", .system),
+        "iCloudHelper": ("iCloud Helper", .system),
+        "com.apple.iCloudHelper": ("iCloud Helper Service", .system),
+
+        // System Extensions
+        "SystemExtensionsHost": ("System Extensions Host", .system),
+        "SystemMigrationd": ("System Migration Daemon", .system),
+        "SystemPolicyAgent": ("System Policy Agent", .system),
+
+        // Print Services
+        "PrinterProxy": ("Printer Proxy", .system),
+        "PrintingService": ("Printing Service", .system),
+        "cupsd": ("CUPS Print Server", .system),
+
+        // Updates & Maintenance
+        "SoftwareUpdateNotificationManager": ("Software Update Notifications", .system),
+        "mobileassetd": ("Mobile Asset Daemon", .system),
+        "com.apple.MobileAsset": ("Mobile Asset Service", .system),
+
+        // Dictation & Input
+        "DictationIM": ("Dictation Input Method", .system),
+        "com.apple.speech.synthesisserver": ("Speech Synthesis Server", .system),
+        "TextInputSwitcher": ("Text Input Switcher", .system),
+
+        // Continuity & Handoff
+        "HandoffAgent": ("Handoff Agent", .system),
+        "ContinuityAgent": ("Continuity Agent", .system),
+        "com.apple.coreservices.uiagent": ("Core Services UI Agent", .system),
+
+        // Dock & Launchpad
+        "com.apple.dock.extras": ("Dock Extras", .system),
+        "LaunchpadManager": ("Launchpad Manager", .system),
+
+        // Finder Extensions
+        "com.apple.quicklook": ("Quick Look Service", .system),
+        "QLPreviewExtension": ("Quick Look Preview Extension", .system),
+
+        // Misc System Services
+        "AirDropAgent": ("AirDrop Agent", .system),
+        "AirPortBaseStationAgent": ("AirPort Base Station Agent", .system),
+        "appleh13camerad": ("Camera Daemon", .system),
+        "BiomeAgent": ("Biome Agent", .system),
+        "com.apple.Safari.History": ("Safari History Service", .system),
+        "com.apple.Safari.SafeBrowsing.Service": ("Safari Safe Browsing", .system),
+        "DesktopServicesHelper": ("Desktop Services Helper", .system),
+        "diagnostics_agent": ("Diagnostics Agent", .system),
+        "dprivacyd": ("Display Privacy Daemon", .system),
+        "FamilyCircle": ("Family Circle Agent", .system),
+        "Family Sharing": ("Family Sharing Service", .system),
+        "FontValidatorService": ("Font Validator Service", .system),
+        "GameCenterUIService": ("Game Center UI Service", .system),
+        "geod": ("Location Services Daemon", .system),
+        "HIDSystemServer": ("Human Interface Device Server", .system),
+        "InstallAssistant": ("Install Assistant", .system),
+        "IntentsExtension": ("Intents Extension", .system),
+        "kernel": ("Kernel Process", .system),
+        "KerberosAgent": ("Kerberos Authentication Agent", .system),
+        "keyboardmigrator": ("Keyboard Migrator", .system),
+        "LocalAuthenticationUIAgent": ("Local Authentication UI", .system),
+        "MDCrashReportTool": ("Crash Report Tool", .system),
+        "MRTd": ("Malware Removal Tool Daemon", .system),
+        "MTLCompilerService": ("Metal Compiler Service", .system),
+        "NetworkConfigAgent": ("Network Config Agent", .system),
+        "PassbookUIService": ("Passbook UI Service", .system),
+        "remoted": ("Remote Daemon", .system),
+        "SafariCloudHistoryPushAgent": ("Safari Cloud History Push", .system),
+        "screencaptureui": ("Screenshot UI", .system),
+        "ScreenTimeAgent": ("Screen Time Agent", .system),
+        "Security": ("Security Service", .system),
+        "seserviced": ("System Events Service", .system),
+        "SocialPushAgent": ("Social Push Agent", .system),
+        "SpotlightIndexingAgent": ("Spotlight Indexing Agent", .system),
+        "TelephonyUtilities": ("Telephony Utilities", .system),
+        "TimeMachine": ("Time Machine", .system),
+        "tmhelper": ("Time Machine Helper", .system),
+        "TouchBarServer": ("Touch Bar Server", .system),
+        "UserAccountAgent": ("User Account Agent", .system),
+        "VoiceOver": ("VoiceOver Accessibility", .system),
+        "WiFiVelocity": ("WiFi Velocity Service", .system),
+
         // User Applications (Yellow - User)
         "Safari": ("Safari Web Browser", .user),
         "Google Chrome": ("Chrome Web Browser", .user),
@@ -225,6 +369,105 @@ struct ProcessDictionary {
         "MonitorControl": ("Monitor Control Utility", .user),
         "The Unarchiver": ("The Unarchiver", .user),
         "Transmission": ("Transmission BitTorrent", .user),
+
+        // Development Tools
+        "node": ("Node.js Runtime", .user),
+        "npm": ("Node Package Manager", .user),
+        "yarn": ("Yarn Package Manager", .user),
+        "pnpm": ("PNPM Package Manager", .user),
+        "bun": ("Bun JavaScript Runtime", .user),
+        "deno": ("Deno Runtime", .user),
+        "python3": ("Python 3 Interpreter", .user),
+        "python": ("Python Interpreter", .user),
+        "python2": ("Python 2 Interpreter", .user),
+        "ruby": ("Ruby Interpreter", .user),
+        "java": ("Java Runtime", .user),
+        "javac": ("Java Compiler", .user),
+        "cargo": ("Rust Package Manager", .user),
+        "rustc": ("Rust Compiler", .user),
+        "go": ("Go Programming Language", .user),
+        "gcc": ("GNU C Compiler", .user),
+        "clang": ("LLVM C Compiler", .user),
+        "swift": ("Swift Compiler", .user),
+        "swiftc": ("Swift Compiler", .user),
+        "php": ("PHP Interpreter", .user),
+        "perl": ("Perl Interpreter", .user),
+
+        // Databases
+        "postgres": ("PostgreSQL Database", .user),
+        "postgresql": ("PostgreSQL Database", .user),
+        "mysqld": ("MySQL Database Server", .user),
+        "mysql": ("MySQL Client", .user),
+        "redis-server": ("Redis Cache Server", .user),
+        "redis-cli": ("Redis Client", .user),
+        "mongod": ("MongoDB Database", .user),
+        "mongo": ("MongoDB Client", .user),
+        "memcached": ("Memcached Server", .user),
+        "sqlite3": ("SQLite Database", .user),
+        "mariadb": ("MariaDB Database", .user),
+
+        // Web Servers
+        "nginx": ("Nginx Web Server", .user),
+        "httpd": ("Apache HTTP Server", .user),
+        "apache2": ("Apache HTTP Server", .user),
+
+        // Docker & Containers
+        "com.docker.backend": ("Docker Backend", .user),
+        "com.docker.supervisor": ("Docker Supervisor", .user),
+        "com.docker.cli": ("Docker CLI", .user),
+        "dockerd": ("Docker Daemon", .user),
+        "containerd": ("Container Runtime", .user),
+        "docker-compose": ("Docker Compose", .user),
+        "kubectl": ("Kubernetes CLI", .user),
+        "podman": ("Podman Container Tool", .user),
+
+        // Build Tools
+        "webpack": ("Webpack Bundler", .user),
+        "vite": ("Vite Build Tool", .user),
+        "rollup": ("Rollup Bundler", .user),
+        "esbuild": ("ESBuild Bundler", .user),
+        "parcel": ("Parcel Bundler", .user),
+        "tsc": ("TypeScript Compiler", .user),
+        "eslint": ("ESLint Linter", .user),
+        "prettier": ("Prettier Code Formatter", .user),
+        "jest": ("Jest Test Runner", .user),
+        "vitest": ("Vitest Test Runner", .user),
+        "mocha": ("Mocha Test Runner", .user),
+        "jasmine": ("Jasmine Test Runner", .user),
+        "karma": ("Karma Test Runner", .user),
+        "babel": ("Babel JavaScript Compiler", .user),
+        "make": ("GNU Make Build Tool", .user),
+        "cmake": ("CMake Build System", .user),
+        "gradle": ("Gradle Build Tool", .user),
+        "maven": ("Maven Build Tool", .user),
+        "ant": ("Apache Ant Build Tool", .user),
+
+        // Version Control
+        "git": ("Git Version Control", .user),
+        "git-credential-osxkeychain": ("Git Credential Helper", .user),
+        "gh": ("GitHub CLI", .user),
+        "hub": ("GitHub Hub CLI", .user),
+        "svn": ("Subversion Version Control", .user),
+        "hg": ("Mercurial Version Control", .user),
+
+        // Package Managers & Tools
+        "brew": ("Homebrew Package Manager", .user),
+        "pip": ("Python Package Installer", .user),
+        "pip3": ("Python 3 Package Installer", .user),
+        "gem": ("Ruby Package Manager", .user),
+        "bundler": ("Ruby Bundler", .user),
+        "composer": ("PHP Composer", .user),
+        "conda": ("Conda Package Manager", .user),
+
+        // Shell & Terminal Tools
+        "tcsh": ("TCSH Shell", .user),
+        "ksh": ("Korn Shell", .user),
+        "vim": ("Vim Text Editor", .user),
+        "nvim": ("Neovim Editor", .user),
+        "emacs": ("Emacs Editor", .user),
+        "nano": ("Nano Editor", .user),
+        "tmux": ("Terminal Multiplexer", .user),
+        "screen": ("GNU Screen", .user),
     ]
 
     static func lookup(_ processName: String) -> (String, Safety)? {
@@ -236,5 +479,255 @@ struct ProcessDictionary {
             return entry
         }
         return (defaultDescription, .unknown)
+    }
+
+    // MARK: - Smart Lookup (multi-layer identification)
+
+    /// Multi-layer process identification with optional LLM fallback.
+    /// `nsAppName` should be pre-resolved from NSWorkspace on the main thread before calling this.
+    /// `llmService` is optional - if provided, will use LLM as final layer before marking unknown.
+    static func smartLookup(name: String, path: String, nsAppName: String?, llmService: LLMService? = nil) async -> (String, Safety) {
+        // 1. Static dictionary — exact match
+        if let entry = dictionary[name] {
+            return entry
+        }
+
+        // 2. NSWorkspace — identifies GUI applications by PID
+        if let appName = nsAppName {
+            return (appName, .user)
+        }
+
+        // 3. App bundle extraction — derive app name from .app path component
+        if let bundleResult = appBundleLookup(name: name, path: path) {
+            return bundleResult
+        }
+
+        // 4. Path-based categorization
+        if let pathResult = pathBasedLookup(name: name, path: path) {
+            return pathResult
+        }
+
+        // 5. Name pattern heuristics
+        if let patternResult = patternBasedLookup(name: name) {
+            return patternResult
+        }
+
+        // 6. LLM fallback (if available)
+        if let llmService = llmService {
+            if let llmResult = await llmService.identifyProcess(name: name, path: path) {
+                return llmResult
+            }
+        }
+
+        // 7. Final fallback — still unknown
+        return (name, .unknown)
+    }
+
+    // MARK: - Layer 3: App bundle extraction
+
+    private static func appBundleLookup(name: String, path: String) -> (String, Safety)? {
+        guard !path.isEmpty else { return nil }
+
+        // Find the outermost .app bundle in the path
+        // e.g. /Applications/Slack.app/Contents/Frameworks/Slack Helper.app/Contents/MacOS/Slack Helper
+        //   → parent app = "Slack"
+        guard let appRange = path.range(of: ".app/", options: .literal) ?? path.range(of: ".app", options: [.literal, .backwards]) else {
+            return nil
+        }
+
+        let beforeApp = path[path.startIndex..<appRange.lowerBound]
+        let appName = String(beforeApp.split(separator: "/").last ?? "")
+
+        guard !appName.isEmpty else { return nil }
+
+        // Determine if this process IS the app or a helper/subprocess of it
+        let isHelper = name != appName
+        let safety: Safety = path.hasPrefix("/Applications") || path.contains("/Users/") ? .user : .system
+
+        if isHelper {
+            return ("\(appName) (\(humanizeProcessRole(name)))", safety)
+        } else {
+            return (appName, safety)
+        }
+    }
+
+    // MARK: - Layer 4: Path-based categorization
+
+    private static func pathBasedLookup(name: String, path: String) -> (String, Safety)? {
+        guard !path.isEmpty else { return nil }
+
+        // Apple system paths
+        let systemPrefixes = [
+            "/System/Library/",
+            "/usr/libexec/",
+            "/usr/sbin/",
+            "/usr/bin/",
+            "/Library/Apple/",
+            "/System/iOSSupport/",
+            "/System/Volumes/",
+        ]
+
+        for prefix in systemPrefixes {
+            if path.hasPrefix(prefix) {
+                return (describeSystemPath(name: name, path: path), .system)
+            }
+        }
+
+        // Apple frameworks in /Library
+        if path.hasPrefix("/Library/") && !path.hasPrefix("/Library/Application Support/") {
+            return (describeSystemPath(name: name, path: path), .system)
+        }
+
+        // User application paths
+        if path.hasPrefix("/Applications/") {
+            return ("\(name)", .user)
+        }
+
+        // User home directory paths
+        if path.contains("/Users/") {
+            return ("\(name)", .user)
+        }
+
+        // Homebrew / developer tools
+        if path.hasPrefix("/opt/homebrew/") || path.hasPrefix("/usr/local/") {
+            return ("\(name)", .user)
+        }
+
+        return nil
+    }
+
+    // MARK: - Layer 5: Name pattern heuristics
+
+    private static func patternBasedLookup(name: String) -> (String, Safety)? {
+        // com.apple.* prefix — definitely Apple system
+        if name.hasPrefix("com.apple.") {
+            let shortName = String(name.dropFirst("com.apple.".count))
+            return ("Apple \(humanizeDotNotation(shortName))", .system)
+        }
+
+        // com.* prefix (third-party reverse domain notation)
+        if name.hasPrefix("com.") && !name.hasPrefix("com.apple.") {
+            let components = name.components(separatedBy: ".")
+            if components.count >= 3 {
+                let appName = components[2].capitalized
+                return (appName, .user)
+            }
+        }
+
+        // io.*, dev.*, app.*, org.* prefixes (common for modern apps)
+        for prefix in ["io.", "dev.", "app.", "org."] {
+            if name.hasPrefix(prefix) {
+                let components = name.components(separatedBy: ".")
+                if components.count >= 2 {
+                    let appName = components[1].capitalized
+                    return (appName, .user)
+                }
+            }
+        }
+
+        // Node.js processes (node with arguments becomes the script name)
+        if name.contains("node") && !name.hasPrefix("node") {
+            return ("Node.js (\(name))", .user)
+        }
+
+        // Common daemon suffix pattern: name ends in 'd' and is lowercase
+        // (e.g. "bluetoothd", "networkd") — but not short words like "pod"
+        if name.count > 3,
+           name.last == "d",
+           name == name.lowercased(),
+           !name.contains(" "),
+           !name.contains(".") {
+            let baseName = String(name.dropLast())
+            return ("\(baseName.capitalized) Service", .system)
+        }
+
+        // Agent pattern
+        if name.hasSuffix("Agent") || name.hasSuffix("agent") {
+            return ("\(name)", .system)
+        }
+
+        // Helper pattern
+        if name.contains("Helper") || name.contains("helper") {
+            return ("\(name)", .system)
+        }
+
+        // Extension pattern
+        if name.hasSuffix("Extension") || name.hasSuffix("extension") {
+            return ("\(name)", .system)
+        }
+
+        // Service pattern
+        if name.hasSuffix("Service") || name.hasSuffix("service") {
+            return ("\(name)", .system)
+        }
+
+        // XPC service pattern (common for sandboxed subprocesses)
+        if name.contains("XPC") || name.contains("xpc") {
+            return ("\(name)", .system)
+        }
+
+        // Language runtime patterns
+        if name.hasPrefix("python") || name.hasSuffix(".py") {
+            return ("Python Script", .user)
+        }
+        if name.hasPrefix("ruby") || name.hasSuffix(".rb") {
+            return ("Ruby Script", .user)
+        }
+        if name.hasSuffix(".sh") || name == "sh" {
+            return ("Shell Script", .user)
+        }
+        if name.hasSuffix(".js") {
+            return ("JavaScript Script", .user)
+        }
+        if name.hasSuffix(".ts") {
+            return ("TypeScript Script", .user)
+        }
+
+        return nil
+    }
+
+    // MARK: - Helpers
+
+    private static func humanizeProcessRole(_ name: String) -> String {
+        if name.contains("Helper") || name.contains("helper") { return "Helper" }
+        if name.contains("Renderer") || name.contains("renderer") { return "Renderer" }
+        if name.contains("GPU") || name.contains("gpu") { return "GPU Process" }
+        if name.contains("Plugin") || name.contains("plugin") { return "Plugin" }
+        if name.contains("Worker") || name.contains("worker") { return "Worker" }
+        if name.contains("Utility") || name.contains("utility") { return "Utility" }
+        if name.contains("Network") || name.contains("network") { return "Network" }
+        if name.contains("Crash") { return "Crash Handler" }
+        return "Background Process"
+    }
+
+    private static func humanizeDotNotation(_ name: String) -> String {
+        // "WebKit.Networking" → "WebKit Networking"
+        name.replacingOccurrences(of: ".", with: " ")
+    }
+
+    private static func describeSystemPath(name: String, path: String) -> String {
+        // Provide context from the system path
+        if path.contains("/PrivateFrameworks/") {
+            return "\(name) (System Framework)"
+        }
+        if path.contains("/Frameworks/") {
+            return "\(name) (Framework Service)"
+        }
+        if path.contains("/CoreServices/") {
+            return "\(name) (Core Service)"
+        }
+        if path.contains("/PreferencePanes/") {
+            return "\(name) (Preference Pane)"
+        }
+        if path.hasPrefix("/usr/libexec/") {
+            return "\(name) (System Service)"
+        }
+        if path.hasPrefix("/usr/sbin/") {
+            return "\(name) (System Admin)"
+        }
+        if path.hasPrefix("/usr/bin/") {
+            return "\(name) (System Utility)"
+        }
+        return "\(name) (macOS)"
     }
 }

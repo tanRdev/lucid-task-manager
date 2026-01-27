@@ -5,6 +5,10 @@ struct BarSparkline: View {
     let data: [Double]
     let color: Color
 
+    private func barOpacity(for index: Int) -> Double {
+        0.5 + (Double(index) / Double(data.count)) * 0.5
+    }
+
     var body: some View {
         if data.isEmpty {
             HStack {
@@ -14,28 +18,19 @@ struct BarSparkline: View {
                 Spacer()
             }
         } else {
+            let enumData = Array(data.enumerated())
             Chart {
-                ForEach(Array(data.enumerated()), id: \.offset) { index, value in
+                ForEach(enumData, id: \.offset) { index, value in
+                    let opacity = barOpacity(for: index)
                     BarMark(
                         x: .value("Index", index),
                         y: .value("Value", value)
                     )
-                    .foregroundStyle(color.opacity(0.5 + (Double(index) / Double(data.count)) * 0.5))
+                    .foregroundStyle(color.opacity(opacity))
                 }
             }
             .chartYAxis(.hidden)
             .chartXAxis(.hidden)
-            .chartPlotAreaBackground(Color.clear)
         }
     }
-}
-
-#Preview {
-    BarSparkline(
-        data: [30, 35, 32, 40, 45, 42, 38, 41, 44, 45, 43, 42],
-        color: Color(red: 1.0, green: 0.35, blue: 0.0)
-    )
-    .frame(height: 40)
-    .padding()
-    .background(Color(red: 0.08, green: 0.08, blue: 0.1))
 }

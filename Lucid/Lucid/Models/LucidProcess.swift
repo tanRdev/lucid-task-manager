@@ -1,7 +1,7 @@
 import Foundation
 
 struct LucidProcess: Identifiable, Hashable, Comparable {
-    let id = UUID()
+    var id: pid_t { pid }
     let pid: pid_t
     let name: String
     let description: String
@@ -9,6 +9,7 @@ struct LucidProcess: Identifiable, Hashable, Comparable {
     let memoryBytes: UInt64
     let safety: Safety
     let exePath: String
+    let ports: [UInt16]
 
     func hash(into hasher: inout Hasher) {
         hasher.combine(pid)
@@ -37,5 +38,12 @@ struct LucidProcess: Identifiable, Hashable, Comparable {
 
     var cpuFormatted: String {
         String(format: "%.1f%%", cpuUsage)
+    }
+
+    var portsFormatted: String {
+        if ports.isEmpty {
+            return "-"
+        }
+        return ports.map(String.init).joined(separator: ", ")
     }
 }

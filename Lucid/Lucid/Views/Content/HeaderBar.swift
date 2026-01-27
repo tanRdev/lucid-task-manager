@@ -3,7 +3,8 @@ import SwiftUI
 struct HeaderBar: View {
     let processCount: Int
     @Binding var searchText: String
-    @Binding var selectedFilter: ContentView.DetailView.FilterCategory
+    @Binding var selectedFilter: FilterCategory
+    @State private var showSettings = false
 
     var body: some View {
         HStack(spacing: 16) {
@@ -18,6 +19,14 @@ struct HeaderBar: View {
             }
 
             Spacer()
+
+            Button(action: { showSettings = true }) {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 16))
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .help("Settings")
 
             HStack(spacing: 12) {
                 Image(systemName: "magnifyingglass")
@@ -35,22 +44,15 @@ struct HeaderBar: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
-            .background(Color(red: 0.12, green: 0.12, blue: 0.14))
+            .background(LucidTheme.backgroundTertiary)
             .cornerRadius(8)
             .frame(maxWidth: 250)
         }
         .padding(16)
-        .background(Color(red: 0.08, green: 0.08, blue: 0.1))
-        .border(Color(red: 0.12, green: 0.12, blue: 0.14), width: 1)
+        .background(LucidTheme.backgroundSecondary)
+        .border(LucidTheme.backgroundTertiary, width: 1)
+        .sheet(isPresented: $showSettings) {
+            SettingsSheet()
+        }
     }
-}
-
-#Preview {
-    HeaderBar(
-        processCount: 42,
-        searchText: .constant(""),
-        selectedFilter: .constant(.all)
-    )
-    .frame(height: 80)
-    .background(Color(red: 0.06, green: 0.06, blue: 0.07))
 }

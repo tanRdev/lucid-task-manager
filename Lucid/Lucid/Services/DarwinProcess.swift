@@ -1,5 +1,15 @@
 import Foundation
-import AppKit
+
+enum DarwinError: Error, LocalizedError {
+    case failedToKill(pid: pid_t, description: String)
+
+    var errorDescription: String? {
+        switch self {
+        case .failedToKill(let pid, let description):
+            return "Failed to kill process \(pid): \(description)"
+        }
+    }
+}
 
 struct DarwinProcess {
     // MARK: - Process Enumeration
@@ -15,7 +25,7 @@ struct DarwinProcess {
     }
 
     static func getProcessName(pid: pid_t) -> String? {
-        var buffer = [CChar](repeating: 0, count: Int(PROC_PIDPATHINFO_MAXSIZE))
+        var buffer = [CChar](repeating: 0, count: Int(4096))
         let ret = proc_pidpath(pid, &buffer, UInt32(buffer.count))
 
         if ret > 0, let name = String(validatingUTF8: buffer) {
@@ -32,7 +42,7 @@ struct DarwinProcess {
     }
 
     static func getProcessPath(pid: pid_t) -> String? {
-        var buffer = [CChar](repeating: 0, count: Int(PROC_PIDPATHINFO_MAXSIZE))
+        var buffer = [CChar](repeating: 0, count: Int(4096))
         let ret = proc_pidpath(pid, &buffer, UInt32(buffer.count))
 
         if ret > 0 {
@@ -57,25 +67,16 @@ struct DarwinProcess {
 
     // MARK: - Process Control
 
-    static func killProcess(pid: pid_t) -> Result<Void, String> {
+    static func killProcess(pid: pid_t) -> Result<Void, DarwinError> {
         if kill(pid, SIGTERM) == 0 {
             return .success(())
         } else {
             let error = String(cString: strerror(errno))
-            return .failure("Failed to kill process \(pid): \(error)")
+            return .failure(.failedToKill(pid: pid, description: error))
         }
     }
 
     // MARK: - Helpers
-
-    static func getRunningApplicationName(pid: pid_t) -> String? {
-        for app in NSWorkspace.shared.runningApplications {
-            if app.processIdentifier == pid {
-                return app.localizedName
-            }
-        }
-        return nil
-    }
 
     static func calculateCPUPercentage(
         currentNanos: UInt64,
@@ -83,7 +84,7 @@ struct DarwinProcess {
         elapsedSeconds: Double,
         coreCount: Int
     ) -> Double {
-        guard elapsedSeconds > 0 else { return 0 }
+        guard elapsedSeconds > 0, currentNanos >= previousNanos else { return 0 }
 
         let deltaNanos = Double(currentNanos - previousNanos)
         let allowedNanos = elapsedSeconds * Double(coreCount) * 1e9

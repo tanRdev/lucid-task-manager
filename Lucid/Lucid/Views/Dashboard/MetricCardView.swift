@@ -8,46 +8,32 @@ struct MetricCardView: View {
     let history: [Double]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
                 Image(systemName: icon)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(color)
+                    .frame(width: 14, height: 14)
 
                 Text(label)
-                    .font(.system(.caption, design: .default))
+                    .font(.system(.caption2, design: .default))
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                Spacer()
-            }
+                Spacer(minLength: 0)
 
-            Text(value)
-                .font(.system(.title3, design: .monospaced))
-                .fontWeight(.semibold)
-
-            if !history.isEmpty {
-                BarSparkline(data: history, color: color)
-                    .frame(height: 32)
-            } else {
-                Spacer()
-                    .frame(height: 32)
+                Text(value)
+                    .font(.system(.caption, design: .monospaced))
+                    .fontWeight(.semibold)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: true)
             }
         }
-        .padding(12)
-        .background(Color(red: 0.12, green: 0.12, blue: 0.14))
-        .cornerRadius(8)
+        .padding(8)
+        .background(LucidTheme.backgroundTertiary)
+        .cornerRadius(6)
+        .help("\(label): \(value)")
     }
-}
-
-#Preview {
-    MetricCardView(
-        label: "CPU",
-        value: "45.2%",
-        icon: "cpu",
-        color: Color(red: 1.0, green: 0.35, blue: 0.0),
-        history: [30, 35, 32, 40, 45, 42, 38, 41, 44, 45, 43, 42]
-    )
-    .frame(maxWidth: .infinity)
-    .padding()
-    .background(Color(red: 0.08, green: 0.08, blue: 0.1))
 }

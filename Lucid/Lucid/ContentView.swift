@@ -2,6 +2,15 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(ProcessMonitor.self) var monitor
+    @AppStorage("appTheme") private var appTheme: String = "system"
+
+    private var colorScheme: ColorScheme? {
+        switch appTheme {
+        case "light": return .light
+        case "dark": return .dark
+        default: return nil
+        }
+    }
 
     var body: some View {
         NavigationSplitView {
@@ -9,7 +18,7 @@ struct ContentView: View {
         } detail: {
             DetailView()
         }
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(colorScheme)
     }
 }
 
@@ -19,21 +28,16 @@ struct DetailView: View {
     @State private var sortOrder: [KeyPathComparator<LucidProcess>] = [
         .init(\.cpuUsage, order: .reverse)
     ]
-    @State private var selectedFilter: FilterCategory = .all
     @State private var killTarget: LucidProcess?
-
-    enum FilterCategory {
-        case all
-        case system
-        case user
-        case unknown
-    }
+    @State private var multiKillTargets: [LucidProcess] = []
+    @State private var selection = Set<LucidProcess.ID>()
+    @State private var killError: String?
 
     var filteredProcesses: [LucidProcess] {
         var result = monitor.processes
 
-        // Apply safety filter
-        switch selectedFilter {
+        // Apply filter
+        switch monitor.selectedFilter {
         case .all:
             break
         case .system:
@@ -42,6 +46,8 @@ struct DetailView: View {
             result = result.filter { $0.safety == .user }
         case .unknown:
             result = result.filter { $0.safety == .unknown }
+        case .port(let port):
+            result = result.filter { $0.ports.contains(port) }
         }
 
         // Apply search
@@ -63,74 +69,149 @@ struct DetailView: View {
             HeaderBar(
                 processCount: filteredProcesses.count,
                 searchText: $searchText,
-                selectedFilter: $selectedFilter
+                selectedFilter: Binding(
+                    get: { monitor.selectedFilter },
+                    set: { monitor.selectedFilter = $0 }
+                )
             )
 
-            Table(filteredProcesses, sortOrder: $sortOrder) {
+            Table(filteredProcesses, selection: $selection, sortOrder: $sortOrder) {
                 TableColumn("Name", value: \.name) { process in
-                    HStack(spacing: 8) {
-                        SafetyDot(safety: process.safety)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(process.name)
-                                .font(.system(.body, design: .monospaced))
-                            Text(process.description)
-                                .font(.system(.caption, design: .default))
-                                .foregroundStyle(.secondary)
-                        }
-                    }
+                    Text(process.name)
+                        .font(.system(.body, design: .monospaced))
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
-                TableColumn("PID", value: \.pid) { process in
-                    Text("\(process.pid)")
-                        .font(.system(.body, design: .monospaced))
+                TableColumn("Tag") { process in
+                    HStack(spacing: 4) {
+                        Image(systemName: process.safety.systemImage)
+                            .font(.system(size: 10))
+                            .foregroundStyle(process.safety.color)
+                        Text(process.safety.label)
+                            .font(.system(size: LucidTheme.fontSizeXS, weight: .medium))
+                            .foregroundStyle(process.safety.color)
+                    }
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(process.safety.color.opacity(0.15))
+                    .clipShape(Capsule())
+                }
+                .width(min: 80, ideal: 100)
+
+                TableColumn("Description", value: \.description) { process in
+                    Text(process.description)
+                        .font(.system(.body, design: .default))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 TableColumn("CPU", value: \.cpuUsage) { process in
                     Text(process.cpuFormatted)
                         .font(.system(.body, design: .monospaced))
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 TableColumn("Memory", value: \.memoryBytes) { process in
                     Text(process.memoryFormatted)
                         .font(.system(.body, design: .monospaced))
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 TableColumn("Path", value: \.exePath) { process in
                     Text(process.exePath)
                         .font(.system(.caption, design: .monospaced))
                         .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
-            .contextMenu(forSelectionType: LucidProcess.ID.self) { selection in
-                if let processID = selection.first,
-                   let process = filteredProcesses.first(where: { $0.id == processID }) {
+            .contextMenu(forSelectionType: LucidProcess.ID.self) { selectedIDs in
+                if selectedIDs.isEmpty {
+                    EmptyView()
+                } else if selectedIDs.count == 1,
+                          let id = selectedIDs.first,
+                          let process = filteredProcesses.first(where: { $0.id == id }) {
+                    // Single selection - show all options
                     Button(role: .destructive) {
                         killTarget = process
                     } label: {
                         Label("Kill Process", systemImage: "xmark.circle")
                     }
+
+                    Divider()
+
+                    Button {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(process.exePath, forType: .string)
+                    } label: {
+                        Label("Copy Path", systemImage: "doc.on.doc")
+                    }
+
+                    Button {
+                        NSWorkspace.shared.selectFile(process.exePath, inFileViewerRootedAtPath: "")
+                    } label: {
+                        Label("Show in Finder", systemImage: "folder")
+                    }
+                } else if selectedIDs.count > 1 {
+                    // Multiple selection - only show kill
+                    Button(role: .destructive) {
+                        multiKillTargets = filteredProcesses.filter { selectedIDs.contains($0.id) }
+                    } label: {
+                        Label("Kill \(selectedIDs.count) Processes", systemImage: "xmark.circle")
+                    }
                 }
             }
             .confirmationDialog(
-                "Kill Process",
-                isPresented: .constant(killTarget != nil),
-                presenting: killTarget
+                killTarget != nil ? "Kill Process" : "Kill Processes",
+                isPresented: Binding(
+                    get: { killTarget != nil || !multiKillTargets.isEmpty },
+                    set: { if !$0 {
+                        killTarget = nil
+                        multiKillTargets = []
+                    }}
+                ),
+                presenting: killTarget ?? multiKillTargets.first
             ) { process in
                 Button("Kill", role: .destructive) {
-                    _ = monitor.killProcess(process)
-                    killTarget = nil
-                    try? Task.sleep(nanoseconds: 500_000_000) // 0.5s
-                    monitor.refresh()
+                    var errors: [String] = []
+                    if let single = killTarget {
+                        if case .failure(let error) = monitor.killProcess(single) {
+                            errors.append("\(single.name): \(error.localizedDescription)")
+                        }
+                        killTarget = nil
+                    } else {
+                        for target in multiKillTargets {
+                            if case .failure(let error) = monitor.killProcess(target) {
+                                errors.append("\(target.name): \(error.localizedDescription)")
+                            }
+                        }
+                        multiKillTargets = []
+                    }
+                    if !errors.isEmpty {
+                        killError = errors.joined(separator: "\n")
+                    }
+                    selection.removeAll()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        monitor.refresh()
+                    }
                 }
             } message: { process in
-                Text("Are you sure you want to kill \(process.name) (PID: \(process.pid))?")
+                if let single = killTarget {
+                    Text("Are you sure you want to kill \(single.name) (PID: \(single.pid))?")
+                } else {
+                    Text("Are you sure you want to kill \(multiKillTargets.count) processes?")
+                }
             }
         }
-        .background(Color(red: 0.06, green: 0.06, blue: 0.07))
+        .background(LucidTheme.backgroundDark)
+        .toolbar(.hidden)
+        .alert("Kill Failed", isPresented: Binding(
+            get: { killError != nil },
+            set: { if !$0 { killError = nil } }
+        )) {
+            Button("OK") { killError = nil }
+        } message: {
+            Text(killError ?? "")
+        }
     }
-}
-
-#Preview {
-    ContentView()
-        .environment(ProcessMonitor())
 }

@@ -1,0 +1,52 @@
+import SwiftUI
+
+struct FilterButton: View {
+    let label: String
+    let icon: String
+    let count: Int
+    var isActive = false
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .frame(width: 20)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                    .font(.system(.body, design: .default))
+                Text("\(count) processes")
+                    .font(.system(.caption, design: .default))
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Text("\(count)")
+                .font(.system(.body, design: .monospaced))
+                .fontWeight(.semibold)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color(red: 0.2, green: 0.2, blue: 0.25))
+                .cornerRadius(4)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(
+            isActive ?
+            Color(red: 0.15, green: 0.15, blue: 0.2) :
+            Color.clear
+        )
+        .cornerRadius(8)
+    }
+}
+
+#Preview {
+    VStack(spacing: 8) {
+        FilterButton(label: "All Processes", icon: "square.grid.2x2", count: 150)
+        FilterButton(label: "System", icon: "gearshape.fill", count: 42, isActive: true)
+        FilterButton(label: "User", icon: "person.fill", count: 25)
+        FilterButton(label: "Unknown", icon: "questionmark.circle.fill", count: 12)
+    }
+    .padding()
+    .background(Color(red: 0.08, green: 0.08, blue: 0.1))
+}

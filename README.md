@@ -1,109 +1,110 @@
 # Lucid
 
-A plain-English activity monitor for macOS. Lucid translates cryptic process names like `mds_stores`, `configd`, and `distnoted` into human-readable descriptions — "Spotlight Search Indexer", "Configuration Daemon", "Distributed Notification Service" — so you actually know what's running on your machine.
+A plain-English activity monitor for macOS built with native SwiftUI. Lucid translates cryptic process names like `mds_stores`, `configd`, and `distnoted` into human-readable descriptions — "Spotlight Search Indexer", "Configuration Daemon", "Distributed Notification Service" — so you actually know what's running on your machine.
 
 ## Features
 
-- **Plain-English descriptions** — Built-in dictionary maps 100+ macOS processes to readable names
+- **Plain-English descriptions** — Built-in dictionary maps 250+ macOS processes to readable names
 - **Safety categories** — Every process is tagged as System (safe, don't touch), User (your apps, safe to kill), or Unknown, with color-coded indicators
 - **Real-time monitoring** — CPU and memory usage updated every 2 seconds with smooth sparkline charts
 - **Kill with confidence** — Terminate processes directly from the UI, with a confirmation dialog and system-process protection
-- **Fast** — Virtualized table renders thousands of processes without breaking a sweat
-- **Native macOS feel** — Frosted glass vibrancy, translucent surfaces, and a compact sidebar that feels at home on macOS
+- **Native performance** — SwiftUI Table with built-in virtualization handles thousands of processes
+- **Liquid Glass design** — Modern iOS 26+ glass effects with graceful fallbacks for older macOS versions
+- **Pure Swift** — No dependencies, just Apple frameworks (SwiftUI, Charts, Darwin)
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Desktop framework | [Tauri v2](https://v2.tauri.app/) |
-| Backend | Rust + [sysinfo](https://crates.io/crates/sysinfo) |
-| Frontend | React 19, TypeScript, [Tailwind CSS v4](https://tailwindcss.com/) |
-| UI components | [shadcn/ui](https://ui.shadcn.com/) + [Radix](https://www.radix-ui.com/) |
-| Type-safe effects | [Effect-TS](https://effect.website/) for typed errors and schema validation |
-| Virtualization | [@tanstack/react-virtual](https://tanstack.com/virtual) |
-| Vibrancy | [window-vibrancy](https://crates.io/crates/window-vibrancy) (NSVisualEffectView) |
-| Linting | [Biome](https://biomejs.dev/) |
+| UI Framework | SwiftUI (macOS 14+) |
+| Design System | Liquid Glass (macOS 26+) with Material fallbacks |
+| Charts | Swift Charts |
+| Process Monitoring | Darwin C APIs (`libproc.h`, `sysctl`) |
+| State Management | `@Observable` + `@Environment` |
+| Language | Swift 5.9+ |
 
 ## Prerequisites
 
-- **Rust** — Install via [rustup](https://rustup.rs/)
-- **Node.js 18+** — Install via [nvm](https://github.com/nvm-sh/nvm) or [nodejs.org](https://nodejs.org/)
-- **macOS** — Required for native vibrancy (the app builds on other platforms but vibrancy is macOS-only)
+- **Xcode 15+** — Required for SwiftUI and Swift 5.9 features
+- **macOS Sonoma 14.0+** — Deployment target for `@Observable` macro
+- **macOS Sequoia 26.0+** — Optional, for Liquid Glass effects
 
 ## Getting Started
 
-```bash
-# Clone the repo
-git clone https://github.com/your-username/lucid.git
-cd lucid
+1. Open `Lucid/Lucid.xcodeproj` in Xcode
+2. Build and run (⌘R)
 
-# Install frontend dependencies
-npm install
-
-# Run in development mode (launches both Vite dev server and Tauri window)
-npm run tauri dev
-```
-
-## Scripts
-
-| Command | Description |
-|---------|-------------|
-| `npm run tauri dev` | Start the app in development mode |
-| `npm run tauri build` | Build a production `.app` bundle |
-| `npm run dev` | Start the Vite dev server only (no Tauri) |
-| `npm run build` | Build the frontend only |
-| `npm run lint` | Check for lint errors with Biome |
-| `npm run lint:fix` | Auto-fix lint errors |
-| `npm run format` | Format source files with Biome |
+The app does not use App Sandbox to access process information. For development, code signing is automatic. For distribution, use a Developer ID certificate.
 
 ## Architecture
 
 ```
-src/                          # React frontend
-├── App.tsx                   # Root layout (titlebar, sidebar, content)
-├── components/
-│   ├── Sidebar.tsx           # Navigation sidebar with status indicator
-│   ├── SystemLoadCard.tsx    # CPU/Memory gauges with sparkline charts
-│   ├── ProcessTableNew.tsx   # Virtualized process table with search/sort/kill
-│   ├── Sparkline.tsx         # SVG sparkline with Catmull-Rom smooth curves
-│   ├── SafetyDot.tsx         # Color-coded safety indicator with tooltip
-│   └── ui/                   # shadcn/ui primitives
-├── hooks/
-│   └── useProcesses.ts       # Effect-TS fiber that polls Rust backend
-├── services/
-│   ├── commands.ts           # Typed Tauri IPC commands via Effect
-│   ├── errors.ts             # Typed error classes (InvokeError, DecodeError, etc.)
-│   └── schemas.ts            # Effect Schema for process data validation
-├── lib/
-│   ├── runtime.ts            # Effect runtime instance
-│   └── utils.ts              # Tailwind merge utility
-├── types.ts                  # Shared TypeScript types
-└── index.css                 # Lucid design system (tokens, glass, typography)
-
-src-tauri/                    # Rust backend
-├── src/
-│   ├── lib.rs                # Tauri setup, vibrancy config, command registration
-│   ├── commands.rs           # Tauri IPC command handlers
-│   ├── process.rs            # Process enumeration and kill via sysinfo
-│   └── dictionary.rs         # Plain-English process name dictionary
-└── tauri.conf.json           # Tauri window and build configuration
+Lucid/
+├── LucidApp.swift                     # @main, WindowGroup, environment injection
+├── ContentView.swift                  # NavigationSplitView (sidebar + detail)
+│
+├── Models/
+│   ├── LucidProcess.swift             # Process data model
+│   ├── Safety.swift                   # Safety enum (system/user/unknown)
+│   └── SystemStats.swift              # Aggregated metrics + history
+│
+├── Services/
+│   ├── ProcessMonitor.swift           # @Observable: Timer polling, refresh, kill
+│   ├── DarwinProcess.swift            # C interop: proc_listallpids, proc_pidinfo
+│   └── ProcessDictionary.swift        # Static dictionary: 250+ process mappings
+│
+├── Views/
+│   ├── Sidebar/                       # Filter buttons + system overview
+│   ├── Content/                       # Table + header + kill confirmation
+│   ├── Dashboard/                     # Metric cards + sparklines
+│   └── Shared/                        # Reusable components
+│
+└── Theme/
+    ├── LucidTheme.swift               # Color tokens, fonts
+    └── GlassModifiers.swift           # Liquid Glass helpers with #available guards
 ```
 
 ## How It Works
 
-1. **Rust backend** uses `sysinfo` to enumerate all running processes, collecting PID, name, CPU usage, memory, and executable path
-2. **Process dictionary** (`dictionary.rs`) maps known process names to human-readable descriptions and safety categories (System, User, Unknown)
-3. **Tauri IPC** exposes `get_processes` and `kill_process` commands to the frontend
-4. **Effect-TS** wraps IPC calls with typed errors (`InvokeError`, `DecodeError`, `KillDeniedError`) and validates response data against schemas
-5. **React frontend** polls the backend every 2 seconds via an Effect fiber, rendering a virtualized table and real-time sparkline charts
+1. **Process enumeration** — Uses Darwin C APIs (`proc_listallpids`, `proc_pidinfo`) to enumerate all running processes
+2. **Process dictionary** — A static Swift dictionary maps 250+ process names to human-readable descriptions and safety categories
+3. **CPU calculation** — Delta-based CPU percentage using `pti_total_user` and `pti_total_system` nanoseconds between samples
+4. **Hybrid naming** — Combines `NSWorkspace.runningApplications` (for full GUI app names) with `proc_name` (for daemons)
+5. **SwiftUI Table** — Native macOS multi-column table with sorting, selection, and built-in virtualization
+6. **Timer polling** — `ProcessMonitor` uses a `Timer` that fires every 2 seconds on the main thread
+7. **Liquid Glass** — `#available(macOS 26, *)` guards apply glass effects on compatible systems, fallback to dark cards on older versions
 
-## Contributing
+## Process Monitoring Details
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/your-feature`)
-3. Make your changes and ensure `npm run lint` passes
-4. Commit with a clear message
-5. Open a pull request
+### Darwin C APIs Used
+
+- `proc_listallpids()` — Get all process IDs
+- `proc_pidinfo(pid, PROC_PIDTASKINFO)` — Get CPU time (nanoseconds) and resident memory
+- `proc_name(pid)` — Get process name (max 16 chars)
+- `proc_pidpath(pid)` — Get executable path
+- `NSWorkspace.shared.runningApplications` — Get full GUI app names (workaround for truncation)
+- `kill(pid, SIGTERM)` — Terminate process
+
+### Limitations
+
+- **Root processes** — Cannot read task info for root-owned processes without elevated privileges. These processes appear with 0 CPU/memory.
+- **App Sandbox** — The app disables the sandbox for full process visibility. Not distributable via Mac App Store.
+- **Name truncation** — `proc_name` is limited to 16 characters. GUI apps use `NSWorkspace` for full names.
+
+## Building & Distribution
+
+### Development
+1. Open in Xcode
+2. Build and run (⌘R)
+3. Code signing is automatic for development
+
+### Distribution
+1. Build for release (Product → Archive)
+2. Export with Developer ID certificate
+3. Notarize with Apple
+4. Distribute as DMG or ZIP
+
+**Note:** Cannot distribute via Mac App Store due to sandbox restrictions on `proc_listallpids`.
 
 ## License
 

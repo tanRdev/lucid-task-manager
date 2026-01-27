@@ -28,7 +28,7 @@ struct FilterButton: View {
                     .fontWeight(.semibold)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(Color(red: 0.2, green: 0.2, blue: 0.25))
+                    .background(LucidTheme.badgeBackground)
                     .cornerRadius(4)
             }
             .padding(.horizontal, 12)
@@ -36,7 +36,7 @@ struct FilterButton: View {
             .contentShape(Rectangle())
             .background(
                 isActive ?
-                Color(red: 0.15, green: 0.15, blue: 0.2) :
+                LucidTheme.borderPrimary :
                 Color.clear
             )
             .cornerRadius(8)

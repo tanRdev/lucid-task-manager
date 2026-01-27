@@ -18,21 +18,19 @@ struct PortFilterRow: View {
                     .font(.system(.body, design: .monospaced))
                 Spacer()
 
-                if isHovering {
-                    Button(action: onKill) {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(Color.red.opacity(0.7))
-                            .font(.system(size: 12))
-                    }
-                    .buttonStyle(.plain)
-                    .help("Kill all processes on port \(port)")
+                Button(action: onKill) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(Color.red.opacity(isHovering ? 0.7 : 0.0001))
+                        .font(.system(size: 12))
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Kill all processes on port \(port)")
 
                 Text("\(processCount)")
                     .font(.system(.caption, design: .monospaced))
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .background(Color(red: 0.2, green: 0.2, blue: 0.25))
+                    .background(LucidTheme.badgeBackground)
                     .cornerRadius(4)
             }
             .padding(.horizontal, 12)
@@ -40,7 +38,7 @@ struct PortFilterRow: View {
             .contentShape(Rectangle())
             .background(
                 isActive ?
-                Color(red: 0.15, green: 0.15, blue: 0.2) :
+                LucidTheme.borderPrimary :
                 Color.clear
             )
             .cornerRadius(8)

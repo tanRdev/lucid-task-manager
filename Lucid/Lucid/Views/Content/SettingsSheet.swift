@@ -55,7 +55,7 @@ struct SettingsSheet: View {
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
-                        .background(Color(red: 0.15, green: 0.15, blue: 0.2))
+                        .background(LucidTheme.borderPrimary)
                         .cornerRadius(8)
                     }
                     .buttonStyle(.plain)
@@ -77,7 +77,7 @@ struct SettingsSheet: View {
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
-                        .background(Color(red: 0.15, green: 0.15, blue: 0.2))
+                        .background(LucidTheme.borderPrimary)
                         .cornerRadius(8)
                     }
                     .buttonStyle(.plain)
@@ -91,11 +91,13 @@ struct SettingsSheet: View {
     }
 
     private func checkForUpdates() {
-        // Placeholder for update check functionality
+        if let url = URL(string: "https://github.com/tanRdev/lucid/releases") {
+            NSWorkspace.shared.open(url)
+        }
     }
 
     private func openRepository() {
-        if let url = URL(string: "https://github.com/anthropics/lucid") {
+        if let url = URL(string: "https://github.com/tanRdev/lucid") {
             NSWorkspace.shared.open(url)
         }
     }

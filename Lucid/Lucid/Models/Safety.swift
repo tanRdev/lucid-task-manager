@@ -8,11 +8,11 @@ enum Safety: String, Codable, Hashable {
     var color: Color {
         switch self {
         case .system:
-            return Color(red: 0.2, green: 0.8, blue: 0.2) // Green
+            return LucidTheme.safetySystem
         case .user:
-            return Color(red: 0.9, green: 0.7, blue: 0.1) // Yellow/Orange
+            return LucidTheme.safetyUser
         case .unknown:
-            return Color(red: 0.8, green: 0.2, blue: 0.2) // Red
+            return LucidTheme.safetyUnknown
         }
     }
 

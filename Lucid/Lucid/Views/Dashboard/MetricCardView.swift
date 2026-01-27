@@ -32,7 +32,7 @@ struct MetricCardView: View {
             }
         }
         .padding(8)
-        .background(Color(red: 0.12, green: 0.12, blue: 0.14))
+        .background(LucidTheme.backgroundTertiary)
         .cornerRadius(6)
         .help("\(label): \(value)")
     }

@@ -14,7 +14,7 @@ struct MetricsRowView: View {
                 label: "CPU",
                 value: String(format: "%.1f%%", monitor.stats.cpuUsage),
                 icon: "cpu",
-                color: Color(red: 1.0, green: 0.35, blue: 0.0),
+                color: LucidTheme.metricCPU,
                 history: []
             )
 
@@ -22,15 +22,15 @@ struct MetricsRowView: View {
                 label: "Memory",
                 value: String(format: "%.1f%%", monitor.stats.memoryUsage),
                 icon: "memorychip",
-                color: Color(red: 0.2, green: 0.8, blue: 0.2),
+                color: LucidTheme.metricMemory,
                 history: []
             )
 
             MetricCardView(
                 label: "Processes",
-                value: "\(monitor.processes.count)",
+                value: "\(monitor.filterCounts.total)",
                 icon: "square.grid.2x2",
-                color: Color(red: 0.2, green: 0.6, blue: 1.0),
+                color: LucidTheme.metricProcesses,
                 history: []
             )
 
@@ -38,7 +38,7 @@ struct MetricsRowView: View {
                 label: "Memory GB",
                 value: String(format: "%.1f/%.1f", monitor.stats.memoryMB / 1024, monitor.stats.totalMemoryGB),
                 icon: "internaldrive",
-                color: Color(red: 1.0, green: 0.6, blue: 0.2),
+                color: LucidTheme.metricDisk,
                 history: []
             )
         }

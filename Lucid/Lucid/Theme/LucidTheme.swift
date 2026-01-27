@@ -41,6 +41,15 @@ struct LucidTheme {
     static let spacingXL: CGFloat = 24
     static let spacing2XL: CGFloat = 32
 
+    // MARK: - Badge / Interactive Colors
+    static let badgeBackground = Color(red: 0.2, green: 0.2, blue: 0.25)
+
+    // MARK: - Metric Colors
+    static let metricCPU = Color(red: 1.0, green: 0.35, blue: 0.0)
+    static let metricMemory = Color(red: 0.2, green: 0.8, blue: 0.2)
+    static let metricProcesses = Color(red: 0.2, green: 0.6, blue: 1.0)
+    static let metricDisk = Color(red: 1.0, green: 0.6, blue: 0.2)
+
     // MARK: - Corner Radius
     static let cornerRadiusS: CGFloat = 4
     static let cornerRadiusM: CGFloat = 8

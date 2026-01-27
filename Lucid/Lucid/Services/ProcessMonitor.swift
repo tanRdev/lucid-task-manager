@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 import os
 
 @Observable
@@ -65,6 +66,17 @@ final class ProcessMonitor {
             guard let self else { return }
             self.isRefreshing = true
 
+            // Snapshot NSWorkspace running applications on the main thread
+            // to safely resolve GUI app names for process identification
+            var appNameMap: [pid_t: String] = [:]
+            DispatchQueue.main.sync {
+                for app in NSWorkspace.shared.runningApplications {
+                    if let name = app.localizedName {
+                        appNameMap[app.processIdentifier] = name
+                    }
+                }
+            }
+
             let pids = DarwinProcess.getAllPIDs()
             let coreCount = ProcessInfo.processInfo.activeProcessorCount
             let portMap = PortScanner.getListeningPorts()
@@ -77,7 +89,8 @@ final class ProcessMonitor {
             for pid in pids {
                 guard let name = DarwinProcess.getProcessName(pid: pid) else { continue }
 
-                let (description, safety) = ProcessDictionary.lookup(name) ?? (name, .unknown)
+                let exePath = DarwinProcess.getProcessPath(pid: pid) ?? ""
+                let (description, safety) = ProcessDictionary.smartLookup(name: name, path: exePath, nsAppName: appNameMap[pid])
 
                 guard let info = DarwinProcess.getProcessInfo(pid: pid) else {
                     // Root/privileged process - show zero metrics
@@ -88,7 +101,7 @@ final class ProcessMonitor {
                         cpuUsage: 0,
                         memoryBytes: 0,
                         safety: safety,
-                        exePath: DarwinProcess.getProcessPath(pid: pid) ?? "",
+                        exePath: exePath,
                         ports: portMap[pid] ?? []
                     )
                     newProcesses.append(process)
@@ -112,7 +125,7 @@ final class ProcessMonitor {
                     cpuUsage: cpuUsage,
                     memoryBytes: info.memoryBytes,
                     safety: safety,
-                    exePath: DarwinProcess.getProcessPath(pid: pid) ?? "",
+                    exePath: exePath,
                     ports: portMap[pid] ?? []
                 )
                 newProcesses.append(process)

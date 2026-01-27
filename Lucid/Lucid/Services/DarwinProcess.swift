@@ -1,5 +1,4 @@
 import Foundation
-import AppKit
 
 enum DarwinError: Error, LocalizedError {
     case failedToKill(pid: pid_t, description: String)
@@ -78,15 +77,6 @@ struct DarwinProcess {
     }
 
     // MARK: - Helpers
-
-    static func getRunningApplicationName(pid: pid_t) -> String? {
-        for app in NSWorkspace.shared.runningApplications {
-            if app.processIdentifier == pid {
-                return app.localizedName
-            }
-        }
-        return nil
-    }
 
     static func calculateCPUPercentage(
         currentNanos: UInt64,

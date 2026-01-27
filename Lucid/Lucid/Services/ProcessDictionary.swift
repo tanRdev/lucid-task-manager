@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 
 struct ProcessDictionary {
     private static let dictionary: [String: (String, Safety)] = [
@@ -379,5 +380,205 @@ struct ProcessDictionary {
             return entry
         }
         return (defaultDescription, .unknown)
+    }
+
+    // MARK: - Smart Lookup (multi-layer identification)
+
+    /// Multi-layer process identification. `nsAppName` should be pre-resolved
+    /// from NSWorkspace on the main thread before calling this.
+    static func smartLookup(name: String, path: String, nsAppName: String?) -> (String, Safety) {
+        // 1. Static dictionary — exact match
+        if let entry = dictionary[name] {
+            return entry
+        }
+
+        // 2. NSWorkspace — identifies GUI applications by PID
+        if let appName = nsAppName {
+            return (appName, .user)
+        }
+
+        // 3. App bundle extraction — derive app name from .app path component
+        if let bundleResult = appBundleLookup(name: name, path: path) {
+            return bundleResult
+        }
+
+        // 4. Path-based categorization
+        if let pathResult = pathBasedLookup(name: name, path: path) {
+            return pathResult
+        }
+
+        // 5. Name pattern heuristics
+        if let patternResult = patternBasedLookup(name: name) {
+            return patternResult
+        }
+
+        // 6. Final fallback — still unknown
+        return (name, .unknown)
+    }
+
+    // MARK: - Layer 3: App bundle extraction
+
+    private static func appBundleLookup(name: String, path: String) -> (String, Safety)? {
+        guard !path.isEmpty else { return nil }
+
+        // Find the outermost .app bundle in the path
+        // e.g. /Applications/Slack.app/Contents/Frameworks/Slack Helper.app/Contents/MacOS/Slack Helper
+        //   → parent app = "Slack"
+        guard let appRange = path.range(of: ".app/", options: .literal) ?? path.range(of: ".app", options: [.literal, .backwards]) else {
+            return nil
+        }
+
+        let beforeApp = path[path.startIndex..<appRange.lowerBound]
+        let appName = String(beforeApp.split(separator: "/").last ?? "")
+
+        guard !appName.isEmpty else { return nil }
+
+        // Determine if this process IS the app or a helper/subprocess of it
+        let isHelper = name != appName
+        let safety: Safety = path.hasPrefix("/Applications") || path.contains("/Users/") ? .user : .system
+
+        if isHelper {
+            return ("\(appName) (\(humanizeProcessRole(name)))", safety)
+        } else {
+            return (appName, safety)
+        }
+    }
+
+    // MARK: - Layer 4: Path-based categorization
+
+    private static func pathBasedLookup(name: String, path: String) -> (String, Safety)? {
+        guard !path.isEmpty else { return nil }
+
+        // Apple system paths
+        let systemPrefixes = [
+            "/System/Library/",
+            "/usr/libexec/",
+            "/usr/sbin/",
+            "/usr/bin/",
+            "/Library/Apple/",
+            "/System/iOSSupport/",
+            "/System/Volumes/",
+        ]
+
+        for prefix in systemPrefixes {
+            if path.hasPrefix(prefix) {
+                return (describeSystemPath(name: name, path: path), .system)
+            }
+        }
+
+        // Apple frameworks in /Library
+        if path.hasPrefix("/Library/") && !path.hasPrefix("/Library/Application Support/") {
+            return (describeSystemPath(name: name, path: path), .system)
+        }
+
+        // User application paths
+        if path.hasPrefix("/Applications/") {
+            return ("\(name)", .user)
+        }
+
+        // User home directory paths
+        if path.contains("/Users/") {
+            return ("\(name)", .user)
+        }
+
+        // Homebrew / developer tools
+        if path.hasPrefix("/opt/homebrew/") || path.hasPrefix("/usr/local/") {
+            return ("\(name)", .user)
+        }
+
+        return nil
+    }
+
+    // MARK: - Layer 5: Name pattern heuristics
+
+    private static func patternBasedLookup(name: String) -> (String, Safety)? {
+        // com.apple.* prefix — definitely Apple system
+        if name.hasPrefix("com.apple.") {
+            let shortName = String(name.dropFirst("com.apple.".count))
+            return ("Apple \(humanizeDotNotation(shortName))", .system)
+        }
+
+        // Common daemon suffix pattern: name ends in 'd' and is lowercase
+        // (e.g. "bluetoothd", "networkd") — but not short words like "pod"
+        if name.count > 3,
+           name.last == "d",
+           name == name.lowercased(),
+           !name.contains(" "),
+           !name.contains(".") {
+            let baseName = String(name.dropLast())
+            return ("\(baseName.capitalized) Service", .system)
+        }
+
+        // Agent pattern
+        if name.hasSuffix("Agent") || name.hasSuffix("agent") {
+            return ("\(name)", .system)
+        }
+
+        // Helper pattern
+        if name.contains("Helper") || name.contains("helper") {
+            return ("\(name)", .system)
+        }
+
+        // Extension pattern
+        if name.hasSuffix("Extension") || name.hasSuffix("extension") {
+            return ("\(name)", .system)
+        }
+
+        // Service pattern
+        if name.hasSuffix("Service") || name.hasSuffix("service") {
+            return ("\(name)", .system)
+        }
+
+        // XPC service pattern (common for sandboxed subprocesses)
+        if name.contains("XPC") || name.contains("xpc") {
+            return ("\(name)", .system)
+        }
+
+        return nil
+    }
+
+    // MARK: - Helpers
+
+    private static func humanizeProcessRole(_ name: String) -> String {
+        if name.contains("Helper") || name.contains("helper") { return "Helper" }
+        if name.contains("Renderer") || name.contains("renderer") { return "Renderer" }
+        if name.contains("GPU") || name.contains("gpu") { return "GPU Process" }
+        if name.contains("Plugin") || name.contains("plugin") { return "Plugin" }
+        if name.contains("Worker") || name.contains("worker") { return "Worker" }
+        if name.contains("Utility") || name.contains("utility") { return "Utility" }
+        if name.contains("Network") || name.contains("network") { return "Network" }
+        if name.contains("Crash") { return "Crash Handler" }
+        return "Background Process"
+    }
+
+    private static func humanizeDotNotation(_ name: String) -> String {
+        // "WebKit.Networking" → "WebKit Networking"
+        name.replacingOccurrences(of: ".", with: " ")
+    }
+
+    private static func describeSystemPath(name: String, path: String) -> String {
+        // Provide context from the system path
+        if path.contains("/PrivateFrameworks/") {
+            return "\(name) (System Framework)"
+        }
+        if path.contains("/Frameworks/") {
+            return "\(name) (Framework Service)"
+        }
+        if path.contains("/CoreServices/") {
+            return "\(name) (Core Service)"
+        }
+        if path.contains("/PreferencePanes/") {
+            return "\(name) (Preference Pane)"
+        }
+        if path.hasPrefix("/usr/libexec/") {
+            return "\(name) (System Service)"
+        }
+        if path.hasPrefix("/usr/sbin/") {
+            return "\(name) (System Admin)"
+        }
+        if path.hasPrefix("/usr/bin/") {
+            return "\(name) (System Utility)"
+        }
+        return "\(name) (macOS)"
     }
 }

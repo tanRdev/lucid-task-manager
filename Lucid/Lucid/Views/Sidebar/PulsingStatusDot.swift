@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct PulsingStatusDot: View {
+    @Environment(ProcessMonitor.self) var monitor
     @State private var isPulsing = false
 
     var body: some View {
@@ -11,9 +12,14 @@ struct PulsingStatusDot: View {
             .scaleEffect(isPulsing ? 1.2 : 0.9)
             .opacity(isPulsing ? 1.0 : 0.7)
             .animation(
-                .easeInOut(duration: 1.2).repeatForever(autoreverses: true),
+                monitor.isRunning
+                    ? .easeInOut(duration: 1.2).repeatForever(autoreverses: true)
+                    : .default,
                 value: isPulsing
             )
-            .onAppear { isPulsing = true }
+            .onChange(of: monitor.isRunning) { _, running in
+                isPulsing = running
+            }
+            .onAppear { isPulsing = monitor.isRunning }
     }
 }

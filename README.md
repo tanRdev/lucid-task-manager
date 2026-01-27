@@ -1,6 +1,4 @@
-# Lucid
-
-<img src="Resources/app-icon.png" alt="Lucid App Icon" width="128">
+# <img src="Resources/app-icon.png" alt="Lucid" height="32" style="vertical-align: middle; margin-right: 6px;"> Lucid
 
 A plain-English activity monitor for macOS built with native SwiftUI. Lucid translates cryptic process names like `mds_stores`, `configd`, and `distnoted` into human-readable descriptions — "Spotlight Search Indexer", "Configuration Daemon", "Distributed Notification Service" — so you can see what's running on your machine.
 

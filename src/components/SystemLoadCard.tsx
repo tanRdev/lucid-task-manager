@@ -64,8 +64,9 @@ function MetricCard({ label, icon, value, data, color }: MetricCardProps) {
         background: "#111113",
         border: "1px solid #1F1F23",
         borderRadius: 12,
-        padding: 16,
+        padding: 12,
         minWidth: 0,
+        overflow: "hidden",
       }}
     >
       {/* Header */}
@@ -115,12 +116,12 @@ export function SystemLoadCard({
 
   return (
     <div
-      className="w-full"
       style={{
         display: "grid",
-        gridTemplateColumns: "repeat(4, 1fr)",
+        gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
         gap: 16,
-        padding: "24px 32px 0 32px",
+        padding: "20px 20px 0 20px",
+        width: "100%",
       }}
     >
       <MetricCard

@@ -169,7 +169,7 @@ export function ProcessTableNew({ processes, totalCount }: ProcessTableProps) {
       {/* Table Area */}
       <div
         className="flex-1 flex flex-col overflow-hidden"
-        style={{ padding: "16px 32px 0 32px" }}
+        style={{ padding: "16px 20px 0 20px", width: "100%" }}
       >
         <div
           className="flex-1 flex flex-col overflow-hidden"

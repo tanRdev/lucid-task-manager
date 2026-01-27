@@ -125,7 +125,7 @@ function App() {
 
       <div
         className="flex-1 flex flex-col overflow-hidden"
-        style={{ background: "#0A0A0B" }}
+        style={{ background: "#0A0A0B", width: "100%", minWidth: 0 }}
       >
         {/* Top Bar — process header */}
         <div
@@ -133,15 +133,12 @@ function App() {
           style={
             {
               height: 64,
-              padding: "0 32px",
+              padding: "0 20px",
               borderBottom: "1px solid #1F1F23",
             } as React.CSSProperties
           }
         >
-          <div
-            className="flex items-center"
-            style={{ gap: "16px" }}
-          >
+          <div className="flex items-center" style={{ gap: "16px" }}>
             <h1
               style={{
                 fontFamily: "Geist",
@@ -173,9 +170,7 @@ function App() {
             </div>
           </div>
 
-          <div
-            className="flex items-center"
-          >
+          <div className="flex items-center">
             <div
               className="flex items-center"
               style={{

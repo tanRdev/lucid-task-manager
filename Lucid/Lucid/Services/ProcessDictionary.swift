@@ -369,6 +369,105 @@ struct ProcessDictionary {
         "MonitorControl": ("Monitor Control Utility", .user),
         "The Unarchiver": ("The Unarchiver", .user),
         "Transmission": ("Transmission BitTorrent", .user),
+
+        // Development Tools
+        "node": ("Node.js Runtime", .user),
+        "npm": ("Node Package Manager", .user),
+        "yarn": ("Yarn Package Manager", .user),
+        "pnpm": ("PNPM Package Manager", .user),
+        "bun": ("Bun JavaScript Runtime", .user),
+        "deno": ("Deno Runtime", .user),
+        "python3": ("Python 3 Interpreter", .user),
+        "python": ("Python Interpreter", .user),
+        "python2": ("Python 2 Interpreter", .user),
+        "ruby": ("Ruby Interpreter", .user),
+        "java": ("Java Runtime", .user),
+        "javac": ("Java Compiler", .user),
+        "cargo": ("Rust Package Manager", .user),
+        "rustc": ("Rust Compiler", .user),
+        "go": ("Go Programming Language", .user),
+        "gcc": ("GNU C Compiler", .user),
+        "clang": ("LLVM C Compiler", .user),
+        "swift": ("Swift Compiler", .user),
+        "swiftc": ("Swift Compiler", .user),
+        "php": ("PHP Interpreter", .user),
+        "perl": ("Perl Interpreter", .user),
+
+        // Databases
+        "postgres": ("PostgreSQL Database", .user),
+        "postgresql": ("PostgreSQL Database", .user),
+        "mysqld": ("MySQL Database Server", .user),
+        "mysql": ("MySQL Client", .user),
+        "redis-server": ("Redis Cache Server", .user),
+        "redis-cli": ("Redis Client", .user),
+        "mongod": ("MongoDB Database", .user),
+        "mongo": ("MongoDB Client", .user),
+        "memcached": ("Memcached Server", .user),
+        "sqlite3": ("SQLite Database", .user),
+        "mariadb": ("MariaDB Database", .user),
+
+        // Web Servers
+        "nginx": ("Nginx Web Server", .user),
+        "httpd": ("Apache HTTP Server", .user),
+        "apache2": ("Apache HTTP Server", .user),
+
+        // Docker & Containers
+        "com.docker.backend": ("Docker Backend", .user),
+        "com.docker.supervisor": ("Docker Supervisor", .user),
+        "com.docker.cli": ("Docker CLI", .user),
+        "dockerd": ("Docker Daemon", .user),
+        "containerd": ("Container Runtime", .user),
+        "docker-compose": ("Docker Compose", .user),
+        "kubectl": ("Kubernetes CLI", .user),
+        "podman": ("Podman Container Tool", .user),
+
+        // Build Tools
+        "webpack": ("Webpack Bundler", .user),
+        "vite": ("Vite Build Tool", .user),
+        "rollup": ("Rollup Bundler", .user),
+        "esbuild": ("ESBuild Bundler", .user),
+        "parcel": ("Parcel Bundler", .user),
+        "tsc": ("TypeScript Compiler", .user),
+        "eslint": ("ESLint Linter", .user),
+        "prettier": ("Prettier Code Formatter", .user),
+        "jest": ("Jest Test Runner", .user),
+        "vitest": ("Vitest Test Runner", .user),
+        "mocha": ("Mocha Test Runner", .user),
+        "jasmine": ("Jasmine Test Runner", .user),
+        "karma": ("Karma Test Runner", .user),
+        "babel": ("Babel JavaScript Compiler", .user),
+        "make": ("GNU Make Build Tool", .user),
+        "cmake": ("CMake Build System", .user),
+        "gradle": ("Gradle Build Tool", .user),
+        "maven": ("Maven Build Tool", .user),
+        "ant": ("Apache Ant Build Tool", .user),
+
+        // Version Control
+        "git": ("Git Version Control", .user),
+        "git-credential-osxkeychain": ("Git Credential Helper", .user),
+        "gh": ("GitHub CLI", .user),
+        "hub": ("GitHub Hub CLI", .user),
+        "svn": ("Subversion Version Control", .user),
+        "hg": ("Mercurial Version Control", .user),
+
+        // Package Managers & Tools
+        "brew": ("Homebrew Package Manager", .user),
+        "pip": ("Python Package Installer", .user),
+        "pip3": ("Python 3 Package Installer", .user),
+        "gem": ("Ruby Package Manager", .user),
+        "bundler": ("Ruby Bundler", .user),
+        "composer": ("PHP Composer", .user),
+        "conda": ("Conda Package Manager", .user),
+
+        // Shell & Terminal Tools
+        "tcsh": ("TCSH Shell", .user),
+        "ksh": ("Korn Shell", .user),
+        "vim": ("Vim Text Editor", .user),
+        "nvim": ("Neovim Editor", .user),
+        "emacs": ("Emacs Editor", .user),
+        "nano": ("Nano Editor", .user),
+        "tmux": ("Terminal Multiplexer", .user),
+        "screen": ("GNU Screen", .user),
     ]
 
     static func lookup(_ processName: String) -> (String, Safety)? {
@@ -384,9 +483,10 @@ struct ProcessDictionary {
 
     // MARK: - Smart Lookup (multi-layer identification)
 
-    /// Multi-layer process identification. `nsAppName` should be pre-resolved
-    /// from NSWorkspace on the main thread before calling this.
-    static func smartLookup(name: String, path: String, nsAppName: String?) -> (String, Safety) {
+    /// Multi-layer process identification with optional LLM fallback.
+    /// `nsAppName` should be pre-resolved from NSWorkspace on the main thread before calling this.
+    /// `llmService` is optional - if provided, will use LLM as final layer before marking unknown.
+    static func smartLookup(name: String, path: String, nsAppName: String?, llmService: LLMService? = nil) async -> (String, Safety) {
         // 1. Static dictionary — exact match
         if let entry = dictionary[name] {
             return entry
@@ -412,7 +512,14 @@ struct ProcessDictionary {
             return patternResult
         }
 
-        // 6. Final fallback — still unknown
+        // 6. LLM fallback (if available)
+        if let llmService = llmService {
+            if let llmResult = await llmService.identifyProcess(name: name, path: path) {
+                return llmResult
+            }
+        }
+
+        // 7. Final fallback — still unknown
         return (name, .unknown)
     }
 
@@ -498,6 +605,31 @@ struct ProcessDictionary {
             return ("Apple \(humanizeDotNotation(shortName))", .system)
         }
 
+        // com.* prefix (third-party reverse domain notation)
+        if name.hasPrefix("com.") && !name.hasPrefix("com.apple.") {
+            let components = name.components(separatedBy: ".")
+            if components.count >= 3 {
+                let appName = components[2].capitalized
+                return (appName, .user)
+            }
+        }
+
+        // io.*, dev.*, app.*, org.* prefixes (common for modern apps)
+        for prefix in ["io.", "dev.", "app.", "org."] {
+            if name.hasPrefix(prefix) {
+                let components = name.components(separatedBy: ".")
+                if components.count >= 2 {
+                    let appName = components[1].capitalized
+                    return (appName, .user)
+                }
+            }
+        }
+
+        // Node.js processes (node with arguments becomes the script name)
+        if name.contains("node") && !name.hasPrefix("node") {
+            return ("Node.js (\(name))", .user)
+        }
+
         // Common daemon suffix pattern: name ends in 'd' and is lowercase
         // (e.g. "bluetoothd", "networkd") — but not short words like "pod"
         if name.count > 3,
@@ -532,6 +664,23 @@ struct ProcessDictionary {
         // XPC service pattern (common for sandboxed subprocesses)
         if name.contains("XPC") || name.contains("xpc") {
             return ("\(name)", .system)
+        }
+
+        // Language runtime patterns
+        if name.hasPrefix("python") || name.hasSuffix(".py") {
+            return ("Python Script", .user)
+        }
+        if name.hasPrefix("ruby") || name.hasSuffix(".rb") {
+            return ("Ruby Script", .user)
+        }
+        if name.hasSuffix(".sh") || name == "sh" {
+            return ("Shell Script", .user)
+        }
+        if name.hasSuffix(".js") {
+            return ("JavaScript Script", .user)
+        }
+        if name.hasSuffix(".ts") {
+            return ("TypeScript Script", .user)
         }
 
         return nil

@@ -27,6 +27,9 @@ final class ProcessMonitor {
     private let timerQueue = DispatchQueue(label: "com.tan.lucid.timer", qos: .userInitiated)
     private var isRefreshing = false
 
+    // LLM service for process identification
+    private let llmService = LLMService()
+
     // MARK: - Lifecycle
 
     init() {}
@@ -62,19 +65,20 @@ final class ProcessMonitor {
     func refresh() {
         guard !isRefreshing else { return }
 
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+        Task { [weak self] in
             guard let self else { return }
             self.isRefreshing = true
 
             // Snapshot NSWorkspace running applications on the main thread
             // to safely resolve GUI app names for process identification
-            var appNameMap: [pid_t: String] = [:]
-            DispatchQueue.main.sync {
+            let appNameMap: [pid_t: String] = await MainActor.run {
+                var map: [pid_t: String] = [:]
                 for app in NSWorkspace.shared.runningApplications {
                     if let name = app.localizedName {
-                        appNameMap[app.processIdentifier] = name
+                        map[app.processIdentifier] = name
                     }
                 }
+                return map
             }
 
             let pids = DarwinProcess.getAllPIDs()
@@ -86,52 +90,74 @@ final class ProcessMonitor {
 
             let elapsedSeconds = self.pollInterval
 
-            for pid in pids {
-                guard let name = DarwinProcess.getProcessName(pid: pid) else { continue }
+            // Semaphore to throttle concurrent LLM calls (max 3 at once)
+            let semaphore = DispatchSemaphore(value: 3)
 
-                let exePath = DarwinProcess.getProcessPath(pid: pid) ?? ""
-                let (description, safety) = ProcessDictionary.smartLookup(name: name, path: exePath, nsAppName: appNameMap[pid])
+            // Process all PIDs concurrently with async/await
+            await withTaskGroup(of: LucidProcess?.self) { group in
+                for pid in pids {
+                    group.addTask {
+                        guard let name = DarwinProcess.getProcessName(pid: pid) else { return nil }
 
-                guard let info = DarwinProcess.getProcessInfo(pid: pid) else {
-                    // Root/privileged process - show zero metrics
-                    let process = LucidProcess(
-                        pid: pid,
-                        name: name,
-                        description: description,
-                        cpuUsage: 0,
-                        memoryBytes: 0,
-                        safety: safety,
-                        exePath: exePath,
-                        ports: portMap[pid] ?? []
-                    )
-                    newProcesses.append(process)
-                    continue
+                        let exePath = DarwinProcess.getProcessPath(pid: pid) ?? ""
+
+                        // Throttle LLM calls
+                        semaphore.wait()
+                        let (description, safety) = await ProcessDictionary.smartLookup(
+                            name: name,
+                            path: exePath,
+                            nsAppName: appNameMap[pid],
+                            llmService: self.llmService
+                        )
+                        semaphore.signal()
+
+                        guard let info = DarwinProcess.getProcessInfo(pid: pid) else {
+                            // Root/privileged process - show zero metrics
+                            return LucidProcess(
+                                pid: pid,
+                                name: name,
+                                description: description,
+                                cpuUsage: 0,
+                                memoryBytes: 0,
+                                safety: safety,
+                                exePath: exePath,
+                                ports: portMap[pid] ?? []
+                            )
+                        }
+
+                        let previousNanos = self.previousCPUTimes[pid] ?? info.cpuNanos
+                        let cpuUsage = DarwinProcess.calculateCPUPercentage(
+                            currentNanos: info.cpuNanos,
+                            previousNanos: previousNanos,
+                            elapsedSeconds: elapsedSeconds,
+                            coreCount: coreCount
+                        )
+
+                        return LucidProcess(
+                            pid: pid,
+                            name: name,
+                            description: description,
+                            cpuUsage: cpuUsage,
+                            memoryBytes: info.memoryBytes,
+                            safety: safety,
+                            exePath: exePath,
+                            ports: portMap[pid] ?? []
+                        )
+                    }
                 }
 
-                currentCPUTimes[pid] = info.cpuNanos
-
-                let previousNanos = self.previousCPUTimes[pid] ?? info.cpuNanos
-                let cpuUsage = DarwinProcess.calculateCPUPercentage(
-                    currentNanos: info.cpuNanos,
-                    previousNanos: previousNanos,
-                    elapsedSeconds: elapsedSeconds,
-                    coreCount: coreCount
-                )
-
-                let process = LucidProcess(
-                    pid: pid,
-                    name: name,
-                    description: description,
-                    cpuUsage: cpuUsage,
-                    memoryBytes: info.memoryBytes,
-                    safety: safety,
-                    exePath: exePath,
-                    ports: portMap[pid] ?? []
-                )
-                newProcesses.append(process)
+                // Collect all results
+                for await process in group {
+                    if let process = process {
+                        newProcesses.append(process)
+                        if let info = DarwinProcess.getProcessInfo(pid: process.pid) {
+                            currentCPUTimes[process.pid] = info.cpuNanos
+                        }
+                    }
+                }
             }
 
-            DispatchQueue.main.async { [weak self] in
+            await MainActor.run { [weak self] in
                 guard let self else { return }
                 self.previousCPUTimes = currentCPUTimes
                 self.processes = newProcesses.sorted()

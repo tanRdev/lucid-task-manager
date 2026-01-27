@@ -3,6 +3,7 @@ import SwiftUI
 struct SidebarView: View {
     @Environment(ProcessMonitor.self) var monitor
     @State private var portToKill: UInt16?
+    @State private var killError: String?
 
     var body: some View {
         VStack(spacing: 16) {
@@ -21,7 +22,7 @@ struct SidebarView: View {
                     FilterButton(
                         label: "All Processes",
                         icon: "square.grid.2x2",
-                        count: monitor.processes.count,
+                        count: monitor.filterCounts.total,
                         isActive: monitor.selectedFilter == .all,
                         action: { monitor.selectedFilter = .all }
                     )
@@ -29,7 +30,7 @@ struct SidebarView: View {
                     FilterButton(
                         label: "System",
                         icon: "gearshape.fill",
-                        count: monitor.processes.filter { $0.safety == .system }.count,
+                        count: monitor.filterCounts.system,
                         isActive: monitor.selectedFilter == .system,
                         action: { monitor.selectedFilter = .system }
                     )
@@ -37,7 +38,7 @@ struct SidebarView: View {
                     FilterButton(
                         label: "User",
                         icon: "person.fill",
-                        count: monitor.processes.filter { $0.safety == .user }.count,
+                        count: monitor.filterCounts.user,
                         isActive: monitor.selectedFilter == .user,
                         action: { monitor.selectedFilter = .user }
                     )
@@ -45,7 +46,7 @@ struct SidebarView: View {
                     FilterButton(
                         label: "Unknown",
                         icon: "questionmark.circle.fill",
-                        count: monitor.processes.filter { $0.safety == .unknown }.count,
+                        count: monitor.filterCounts.unknown,
                         isActive: monitor.selectedFilter == .unknown,
                         action: { monitor.selectedFilter = .unknown }
                     )
@@ -54,7 +55,7 @@ struct SidebarView: View {
             }
 
             // Active Ports Section
-            if !activePorts.isEmpty {
+            if !monitor.activePorts.isEmpty {
                 Divider()
 
                 VStack(alignment: .leading, spacing: 8) {
@@ -64,7 +65,7 @@ struct SidebarView: View {
 
                     ScrollView {
                         VStack(spacing: 4) {
-                            ForEach(activePorts, id: \.self) { port in
+                            ForEach(monitor.activePorts, id: \.self) { port in
                                 PortFilterRow(
                                     port: port,
                                     processCount: monitor.processes.filter { $0.ports.contains(port) }.count,
@@ -110,7 +111,7 @@ struct SidebarView: View {
             }
         }
         .padding(.vertical, 16)
-        .background(Color(red: 0.08, green: 0.08, blue: 0.1))
+        .background(LucidTheme.backgroundSecondary)
         .confirmationDialog(
             "Kill Processes",
             isPresented: Binding(
@@ -121,8 +122,14 @@ struct SidebarView: View {
         ) { port in
             Button("Kill All Processes on Port \(port)", role: .destructive) {
                 let processesToKill = monitor.processes.filter { $0.ports.contains(port) }
+                var errors: [String] = []
                 for process in processesToKill {
-                    _ = monitor.killProcess(process)
+                    if case .failure(let error) = monitor.killProcess(process) {
+                        errors.append("\(process.name): \(error.localizedDescription)")
+                    }
+                }
+                if !errors.isEmpty {
+                    killError = errors.joined(separator: "\n")
                 }
                 portToKill = nil
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -133,10 +140,14 @@ struct SidebarView: View {
             let processCount = monitor.processes.filter { $0.ports.contains(port) }.count
             Text("Are you sure you want to kill all \(processCount) process(es) using port \(port)?")
         }
-    }
-
-    private var activePorts: [UInt16] {
-        Array(Set(monitor.processes.flatMap(\.ports))).sorted()
+        .alert("Kill Failed", isPresented: Binding(
+            get: { killError != nil },
+            set: { if !$0 { killError = nil } }
+        )) {
+            Button("OK") { killError = nil }
+        } message: {
+            Text(killError ?? "")
+        }
     }
 
     private var systemInfoString: String {

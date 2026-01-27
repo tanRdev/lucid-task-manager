@@ -31,7 +31,7 @@ struct DetailView: View {
     @State private var killTarget: LucidProcess?
     @State private var multiKillTargets: [LucidProcess] = []
     @State private var selection = Set<LucidProcess.ID>()
-    @State private var selectedPIDs = Set<pid_t>()
+    @State private var killError: String?
 
     var filteredProcesses: [LucidProcess] {
         var result = monitor.processes
@@ -128,13 +128,12 @@ struct DetailView: View {
             .contextMenu(forSelectionType: LucidProcess.ID.self) { selectedIDs in
                 if selectedIDs.isEmpty {
                     EmptyView()
-                } else if selectedIDs.count == 1 {
+                } else if selectedIDs.count == 1,
+                          let id = selectedIDs.first,
+                          let process = filteredProcesses.first(where: { $0.id == id }) {
                     // Single selection - show all options
                     Button(role: .destructive) {
-                        if let id = selectedIDs.first,
-                           let process = filteredProcesses.first(where: { $0.id == id }) {
-                            killTarget = process
-                        }
+                        killTarget = process
                     } label: {
                         Label("Kill Process", systemImage: "xmark.circle")
                     }
@@ -142,24 +141,18 @@ struct DetailView: View {
                     Divider()
 
                     Button {
-                        if let id = selectedIDs.first,
-                           let process = filteredProcesses.first(where: { $0.id == id }) {
-                            NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString(process.exePath, forType: .string)
-                        }
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(process.exePath, forType: .string)
                     } label: {
                         Label("Copy Path", systemImage: "doc.on.doc")
                     }
 
                     Button {
-                        if let id = selectedIDs.first,
-                           let process = filteredProcesses.first(where: { $0.id == id }) {
-                            NSWorkspace.shared.selectFile(process.exePath, inFileViewerRootedAtPath: "")
-                        }
+                        NSWorkspace.shared.selectFile(process.exePath, inFileViewerRootedAtPath: "")
                     } label: {
                         Label("Show in Finder", systemImage: "folder")
                     }
-                } else {
+                } else if selectedIDs.count > 1 {
                     // Multiple selection - only show kill
                     Button(role: .destructive) {
                         multiKillTargets = filteredProcesses.filter { selectedIDs.contains($0.id) }
@@ -180,17 +173,24 @@ struct DetailView: View {
                 presenting: killTarget ?? multiKillTargets.first
             ) { process in
                 Button("Kill", role: .destructive) {
+                    var errors: [String] = []
                     if let single = killTarget {
-                        _ = monitor.killProcess(single)
+                        if case .failure(let error) = monitor.killProcess(single) {
+                            errors.append("\(single.name): \(error.localizedDescription)")
+                        }
                         killTarget = nil
                     } else {
                         for target in multiKillTargets {
-                            _ = monitor.killProcess(target)
+                            if case .failure(let error) = monitor.killProcess(target) {
+                                errors.append("\(target.name): \(error.localizedDescription)")
+                            }
                         }
                         multiKillTargets = []
                     }
+                    if !errors.isEmpty {
+                        killError = errors.joined(separator: "\n")
+                    }
                     selection.removeAll()
-                    selectedPIDs.removeAll()
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         monitor.refresh()
                     }
@@ -203,20 +203,15 @@ struct DetailView: View {
                 }
             }
         }
-        .background(Color(red: 0.06, green: 0.06, blue: 0.07))
+        .background(LucidTheme.backgroundDark)
         .toolbar(.hidden)
-        .onChange(of: selection) { oldValue, newValue in
-            // Update selected PIDs when selection changes
-            selectedPIDs = Set(filteredProcesses.filter { newValue.contains($0.id) }.map { $0.pid })
-        }
-        .onChange(of: monitor.processes) { oldValue, newValue in
-            // Restore selection after process list updates
-            if !selectedPIDs.isEmpty {
-                let newSelection = Set(filteredProcesses.filter { selectedPIDs.contains($0.pid) }.map { $0.id })
-                if !newSelection.isEmpty {
-                    selection = newSelection
-                }
-            }
+        .alert("Kill Failed", isPresented: Binding(
+            get: { killError != nil },
+            set: { if !$0 { killError = nil } }
+        )) {
+            Button("OK") { killError = nil }
+        } message: {
+            Text(killError ?? "")
         }
     }
 }

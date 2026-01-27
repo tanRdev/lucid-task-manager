@@ -1,7 +1,7 @@
 import Foundation
 
 struct LucidProcess: Identifiable, Hashable, Comparable {
-    let id = UUID()
+    var id: pid_t { pid }
     let pid: pid_t
     let name: String
     let description: String

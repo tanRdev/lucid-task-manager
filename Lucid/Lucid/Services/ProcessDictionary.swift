@@ -142,6 +142,149 @@ struct ProcessDictionary {
         "wifip2pd": ("WiFi Peer-to-Peer", .system),
         "XprotectService": ("Malware Protection Service", .system),
 
+        // Shell & Command Line (System)
+        "zsh": ("Z Shell (Command Line)", .system),
+        "bash": ("Bash Shell (Command Line)", .system),
+        "sh": ("Bourne Shell (Command Line)", .system),
+        "fish": ("Fish Shell (Command Line)", .system),
+
+        // XProtect Services (Malware Protection)
+        "XProtectPlugin": ("Malware Protection Plugin", .system),
+        "XProtectPluginService": ("Malware Protection Plugin Service", .system),
+        "XProtectRemediatorEngine": ("Malware Remediation Engine", .system),
+        "XprotectFrameworkService": ("XProtect Framework Service", .system),
+
+        // WiFi & Networking
+        "wifivelocityd": ("WiFi Velocity Daemon", .system),
+        "WiFiDiagnosticsAgent": ("WiFi Diagnostics Agent", .system),
+        "WiFiProximityAgent": ("WiFi Proximity Agent", .system),
+        "WiFiNetworkDiagnostics": ("WiFi Network Diagnostics", .system),
+        "WiFiVelocityAgent": ("WiFi Velocity Agent", .system),
+
+        // Weather Services
+        "WeatherWidget": ("Weather Widget", .system),
+        "weatherd": ("Weather Daemon", .system),
+        "WeatherKitHelper": ("WeatherKit Helper", .system),
+        "WeatherKitService": ("WeatherKit Service", .system),
+
+        // Wallpaper & Desktop
+        "WallpaperAgent": ("Wallpaper Agent", .system),
+        "WallpaperService": ("Wallpaper Service", .system),
+        "wallpaperd": ("Wallpaper Daemon", .system),
+        "WallpaperExtension": ("Wallpaper Extension", .system),
+
+        // Window Server & Graphics
+        "WindowManager": ("Window Manager", .system),
+        "windowserver": ("Window Server", .system),
+        "com.apple.WindowManager": ("Window Manager Service", .system),
+
+        // Siri & Intelligence
+        "Siri": ("Siri Voice Assistant", .system),
+        "SiriNCService": ("Siri Notification Center Service", .system),
+        "assistant_service": ("Assistant Service", .system),
+        "assistantd": ("Assistant Daemon", .system),
+        "SiriKitService": ("SiriKit Service", .system),
+
+        // Spotlight & Search
+        "com.apple.mdworker": ("Spotlight Worker Process", .system),
+
+        // Core Services
+        "coresymbolicationd": ("Core Symbolication Daemon", .system),
+        "coreTelephonyNotificationAgent": ("Telephony Notification Agent", .system),
+        "CoreTimeActivity": ("Core Time Activity", .system),
+        "CoreServicesAccountAgent": ("Core Services Account Agent", .system),
+
+        // Privacy & Security
+        "PrivacyAgent": ("Privacy Agent", .system),
+        "PrivacyService": ("Privacy Service", .system),
+        "privacyd": ("Privacy Daemon", .system),
+
+        // Notification & Communications
+        "NotificationCenter": ("Notification Center", .system),
+        "com.apple.notificationcenterui": ("Notification Center UI", .system),
+        "APNSAgent": ("Apple Push Notification Agent", .system),
+
+        // iCloud Services
+        "iCloudDrive": ("iCloud Drive", .system),
+        "iCloudHelper": ("iCloud Helper", .system),
+        "com.apple.iCloudHelper": ("iCloud Helper Service", .system),
+
+        // System Extensions
+        "SystemExtensionsHost": ("System Extensions Host", .system),
+        "SystemMigrationd": ("System Migration Daemon", .system),
+        "SystemPolicyAgent": ("System Policy Agent", .system),
+
+        // Print Services
+        "PrinterProxy": ("Printer Proxy", .system),
+        "PrintingService": ("Printing Service", .system),
+        "cupsd": ("CUPS Print Server", .system),
+
+        // Updates & Maintenance
+        "SoftwareUpdateNotificationManager": ("Software Update Notifications", .system),
+        "mobileassetd": ("Mobile Asset Daemon", .system),
+        "com.apple.MobileAsset": ("Mobile Asset Service", .system),
+
+        // Dictation & Input
+        "DictationIM": ("Dictation Input Method", .system),
+        "com.apple.speech.synthesisserver": ("Speech Synthesis Server", .system),
+        "TextInputSwitcher": ("Text Input Switcher", .system),
+
+        // Continuity & Handoff
+        "HandoffAgent": ("Handoff Agent", .system),
+        "ContinuityAgent": ("Continuity Agent", .system),
+        "com.apple.coreservices.uiagent": ("Core Services UI Agent", .system),
+
+        // Dock & Launchpad
+        "com.apple.dock.extras": ("Dock Extras", .system),
+        "LaunchpadManager": ("Launchpad Manager", .system),
+
+        // Finder Extensions
+        "com.apple.quicklook": ("Quick Look Service", .system),
+        "QLPreviewExtension": ("Quick Look Preview Extension", .system),
+
+        // Misc System Services
+        "AirDropAgent": ("AirDrop Agent", .system),
+        "AirPortBaseStationAgent": ("AirPort Base Station Agent", .system),
+        "appleh13camerad": ("Camera Daemon", .system),
+        "BiomeAgent": ("Biome Agent", .system),
+        "com.apple.Safari.History": ("Safari History Service", .system),
+        "com.apple.Safari.SafeBrowsing.Service": ("Safari Safe Browsing", .system),
+        "DesktopServicesHelper": ("Desktop Services Helper", .system),
+        "diagnostics_agent": ("Diagnostics Agent", .system),
+        "dprivacyd": ("Display Privacy Daemon", .system),
+        "FamilyCircle": ("Family Circle Agent", .system),
+        "Family Sharing": ("Family Sharing Service", .system),
+        "FontValidatorService": ("Font Validator Service", .system),
+        "GameCenterUIService": ("Game Center UI Service", .system),
+        "geod": ("Location Services Daemon", .system),
+        "HIDSystemServer": ("Human Interface Device Server", .system),
+        "InstallAssistant": ("Install Assistant", .system),
+        "IntentsExtension": ("Intents Extension", .system),
+        "kernel": ("Kernel Process", .system),
+        "KerberosAgent": ("Kerberos Authentication Agent", .system),
+        "keyboardmigrator": ("Keyboard Migrator", .system),
+        "LocalAuthenticationUIAgent": ("Local Authentication UI", .system),
+        "MDCrashReportTool": ("Crash Report Tool", .system),
+        "MRTd": ("Malware Removal Tool Daemon", .system),
+        "MTLCompilerService": ("Metal Compiler Service", .system),
+        "NetworkConfigAgent": ("Network Config Agent", .system),
+        "PassbookUIService": ("Passbook UI Service", .system),
+        "remoted": ("Remote Daemon", .system),
+        "SafariCloudHistoryPushAgent": ("Safari Cloud History Push", .system),
+        "screencaptureui": ("Screenshot UI", .system),
+        "ScreenTimeAgent": ("Screen Time Agent", .system),
+        "Security": ("Security Service", .system),
+        "seserviced": ("System Events Service", .system),
+        "SocialPushAgent": ("Social Push Agent", .system),
+        "SpotlightIndexingAgent": ("Spotlight Indexing Agent", .system),
+        "TelephonyUtilities": ("Telephony Utilities", .system),
+        "TimeMachine": ("Time Machine", .system),
+        "tmhelper": ("Time Machine Helper", .system),
+        "TouchBarServer": ("Touch Bar Server", .system),
+        "UserAccountAgent": ("User Account Agent", .system),
+        "VoiceOver": ("VoiceOver Accessibility", .system),
+        "WiFiVelocity": ("WiFi Velocity Service", .system),
+
         // User Applications (Yellow - User)
         "Safari": ("Safari Web Browser", .user),
         "Google Chrome": ("Chrome Web Browser", .user),

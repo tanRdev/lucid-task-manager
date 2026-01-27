@@ -19,21 +19,13 @@ struct DetailView: View {
     @State private var sortOrder: [KeyPathComparator<LucidProcess>] = [
         .init(\.cpuUsage, order: .reverse)
     ]
-    @State private var selectedFilter: FilterCategory = .all
     @State private var killTarget: LucidProcess?
-
-    enum FilterCategory {
-        case all
-        case system
-        case user
-        case unknown
-    }
 
     var filteredProcesses: [LucidProcess] {
         var result = monitor.processes
 
-        // Apply safety filter
-        switch selectedFilter {
+        // Apply filter
+        switch monitor.selectedFilter {
         case .all:
             break
         case .system:
@@ -42,6 +34,8 @@ struct DetailView: View {
             result = result.filter { $0.safety == .user }
         case .unknown:
             result = result.filter { $0.safety == .unknown }
+        case .port(let port):
+            result = result.filter { $0.ports.contains(port) }
         }
 
         // Apply search
@@ -63,26 +57,26 @@ struct DetailView: View {
             HeaderBar(
                 processCount: filteredProcesses.count,
                 searchText: $searchText,
-                selectedFilter: $selectedFilter
+                selectedFilter: Binding(
+                    get: { monitor.selectedFilter },
+                    set: { monitor.selectedFilter = $0 }
+                )
             )
 
             Table(filteredProcesses, sortOrder: $sortOrder) {
                 TableColumn("Name", value: \.name) { process in
                     HStack(spacing: 8) {
-                        SafetyDot(safety: process.safety)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(process.name)
-                                .font(.system(.body, design: .monospaced))
-                            Text(process.description)
-                                .font(.system(.caption, design: .default))
-                                .foregroundStyle(.secondary)
-                        }
+                        Text(process.name)
+                            .font(.system(.body, design: .monospaced))
+                        SafetyTag(safety: process.safety)
                     }
                 }
 
-                TableColumn("PID", value: \.pid) { process in
-                    Text("\(process.pid)")
-                        .font(.system(.body, design: .monospaced))
+                TableColumn("Description", value: \.description) { process in
+                    Text(process.description)
+                        .font(.system(.body, design: .default))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
 
                 TableColumn("CPU", value: \.cpuUsage) { process in
@@ -95,11 +89,25 @@ struct DetailView: View {
                         .font(.system(.body, design: .monospaced))
                 }
 
+                TableColumn("Port") { process in
+                    Text(process.portsFormatted)
+                        .font(.system(.body, design: .monospaced))
+                        .foregroundStyle(process.ports.isEmpty ? .tertiary : .primary)
+                }
+                .width(min: 60, ideal: 80)
+
                 TableColumn("Path", value: \.exePath) { process in
                     Text(process.exePath)
                         .font(.system(.caption, design: .monospaced))
                         .foregroundStyle(.secondary)
                 }
+
+                TableColumn("") { process in
+                    HoverKillButton(process: process) {
+                        killTarget = process
+                    }
+                }
+                .width(40)
             }
             .contextMenu(forSelectionType: LucidProcess.ID.self) { selection in
                 if let processID = selection.first,
@@ -113,7 +121,10 @@ struct DetailView: View {
             }
             .confirmationDialog(
                 "Kill Process",
-                isPresented: .constant(killTarget != nil),
+                isPresented: Binding(
+                    get: { killTarget != nil },
+                    set: { if !$0 { killTarget = nil } }
+                ),
                 presenting: killTarget
             ) { process in
                 Button("Kill", role: .destructive) {

@@ -3,7 +3,7 @@ import SwiftUI
 struct HeaderBar: View {
     let processCount: Int
     @Binding var searchText: String
-    @Binding var selectedFilter: DetailView.FilterCategory
+    @Binding var selectedFilter: FilterCategory
 
     var body: some View {
         HStack(spacing: 16) {

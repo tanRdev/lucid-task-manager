@@ -8,14 +8,14 @@ struct MetricCardView: View {
     let history: [Double]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
                 Image(systemName: icon)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(color)
 
                 Text(label)
-                    .font(.system(.caption, design: .default))
+                    .font(.system(.caption2, design: .default))
                     .foregroundStyle(.secondary)
 
                 Spacer()
@@ -24,17 +24,9 @@ struct MetricCardView: View {
                     .font(.system(.caption, design: .monospaced))
                     .fontWeight(.semibold)
             }
-
-            if !history.isEmpty {
-                BarSparkline(data: history, color: color)
-                    .frame(height: 20)
-            } else {
-                Spacer()
-                    .frame(height: 20)
-            }
         }
-        .padding(10)
+        .padding(8)
         .background(Color(red: 0.12, green: 0.12, blue: 0.14))
-        .cornerRadius(8)
+        .cornerRadius(6)
     }
 }

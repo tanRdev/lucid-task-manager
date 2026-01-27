@@ -14,6 +14,7 @@ final class ProcessMonitor {
     )
     var isRunning = false
     var lastError: String?
+    var selectedFilter: FilterCategory = .all
 
     // MARK: - Private State
     private var timer: DispatchSourceTimer?
@@ -66,6 +67,7 @@ final class ProcessMonitor {
 
             let pids = DarwinProcess.getAllPIDs()
             let coreCount = ProcessInfo.processInfo.activeProcessorCount
+            let portMap = PortScanner.getListeningPorts()
 
             var newProcesses: [LucidProcess] = []
             var currentCPUTimes: [pid_t: UInt64] = [:]
@@ -86,7 +88,8 @@ final class ProcessMonitor {
                         cpuUsage: 0,
                         memoryBytes: 0,
                         safety: safety,
-                        exePath: DarwinProcess.getProcessPath(pid: pid) ?? ""
+                        exePath: DarwinProcess.getProcessPath(pid: pid) ?? "",
+                        ports: portMap[pid] ?? []
                     )
                     newProcesses.append(process)
                     continue
@@ -109,7 +112,8 @@ final class ProcessMonitor {
                     cpuUsage: cpuUsage,
                     memoryBytes: info.memoryBytes,
                     safety: safety,
-                    exePath: DarwinProcess.getProcessPath(pid: pid) ?? ""
+                    exePath: DarwinProcess.getProcessPath(pid: pid) ?? "",
+                    ports: portMap[pid] ?? []
                 )
                 newProcesses.append(process)
             }

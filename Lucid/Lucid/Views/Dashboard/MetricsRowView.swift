@@ -10,7 +10,7 @@ struct MetricsRowView: View {
                 value: String(format: "%.1f%%", monitor.stats.cpuUsage),
                 icon: "cpu",
                 color: Color(red: 1.0, green: 0.35, blue: 0.0),
-                history: monitor.stats.cpuHistory
+                history: []
             )
 
             MetricCardView(
@@ -18,7 +18,7 @@ struct MetricsRowView: View {
                 value: String(format: "%.1f%%", monitor.stats.memoryUsage),
                 icon: "memorychip",
                 color: Color(red: 0.2, green: 0.8, blue: 0.2),
-                history: monitor.stats.memoryHistory
+                history: []
             )
 
             MetricCardView(
@@ -38,6 +38,5 @@ struct MetricsRowView: View {
             )
         }
         .padding(.horizontal)
-        .padding(.top, 12)
     }
 }

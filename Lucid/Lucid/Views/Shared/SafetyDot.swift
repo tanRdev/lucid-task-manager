@@ -8,5 +8,6 @@ struct SafetyDot: View {
             .fill(safety.color)
             .frame(width: 8, height: 8)
             .shadow(color: safety.color.opacity(0.5), radius: 4, x: 0, y: 0)
+            .accessibilityLabel("\(safety.label) process")
     }
 }

@@ -84,7 +84,7 @@ struct DarwinProcess {
         elapsedSeconds: Double,
         coreCount: Int
     ) -> Double {
-        guard elapsedSeconds > 0 else { return 0 }
+        guard elapsedSeconds > 0, currentNanos >= previousNanos else { return 0 }
 
         let deltaNanos = Double(currentNanos - previousNanos)
         let allowedNanos = elapsedSeconds * Double(coreCount) * 1e9

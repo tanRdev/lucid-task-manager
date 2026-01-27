@@ -39,17 +39,10 @@ pub fn get_all_processes(system: &mut System) -> Vec<ProcessInfo> {
             .unwrap_or("")
             .to_string();
 
-        // Look up process in dictionary
+        // Look up process in dictionary - skip unknown processes
         let (description, safety) = match dictionary::lookup(&process_name) {
             Some((desc, safety_cat)) => (desc.to_string(), safety_cat),
-            None => {
-                // Unknown process - categorize based on CPU usage
-                if cpu_usage > 50.0 {
-                    (format!("Unknown Process (High CPU: {:.1}%)", cpu_usage), Safety::Unknown)
-                } else {
-                    ("System Process".to_string(), Safety::Unknown)
-                }
-            }
+            None => continue, // Skip processes not in dictionary
         };
 
         processes.push(ProcessInfo {

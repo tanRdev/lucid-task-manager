@@ -115,7 +115,7 @@ export function SystemLoadCard({
   return (
     <div
       className="flex w-full"
-      style={{ gap: 16, padding: "20px 32px 0 32px" }}
+      style={{ gap: 16, padding: "24px 32px 0 32px" }}
     >
       <MetricCard
         label="CPU"

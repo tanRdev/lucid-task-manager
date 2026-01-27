@@ -81,7 +81,7 @@ export function Sidebar({
         </div>
 
         {/* Nav Items */}
-        <div className="flex flex-col gap-1" style={{ padding: "16px 12px" }}>
+        <div className="flex flex-col gap-2" style={{ padding: "16px 12px" }}>
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeFilter === item.id;
@@ -92,7 +92,7 @@ export function Sidebar({
                 key={item.id}
                 type="button"
                 onClick={() => onFilterChange(item.id)}
-                className="flex items-center gap-3 h-10 w-full rounded-md px-3"
+                className="flex items-center gap-3 h-10 w-full rounded-md px-3 transition-colors duration-200"
                 style={{
                   background: isActive ? "#1A1A1D" : "transparent",
                   cursor: "pointer",

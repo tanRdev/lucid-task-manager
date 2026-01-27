@@ -438,21 +438,20 @@ export function ProcessTableNew({ processes, totalCount }: ProcessTableProps) {
           if (!open) setKillTarget(null);
         }}
       >
-        <AlertDialogContent className="lucid-glass-elevated">
+        <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Terminate Process</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to kill{" "}
-              <span className="font-semibold">{killTarget?.name}</span> (PID:{" "}
-              {killTarget?.pid})? This action cannot be undone.
+              <span style={{ color: "#FF5C00", fontWeight: 500 }}>
+                {killTarget?.name}
+              </span>{" "}
+              (PID: {killTarget?.pid})? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmKill}
-              style={{ background: "#EF4444", color: "#FFFFFF" }}
-            >
+            <AlertDialogAction onClick={confirmKill}>
               Kill Process
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -17,7 +17,15 @@ let package = Package(
         .executableTarget(
             name: "Lucid",
             dependencies: [],
-            path: "Lucid"
+            path: "Lucid",
+            resources: [
+                .copy("Assets.xcassets")
+            ]
+        ),
+        .testTarget(
+            name: "LucidTests",
+            dependencies: ["Lucid"],
+            path: "LucidTests"
         )
     ]
 )

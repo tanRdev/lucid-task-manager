@@ -5,6 +5,20 @@ struct SidebarView: View {
     @State private var portToKill: UInt16?
     @State private var killError: String?
 
+    private var killErrorBinding: Binding<Bool> {
+        Binding(
+            get: { killError != nil },
+            set: { if !$0 { killError = nil } }
+        )
+    }
+
+    private var portKillBinding: Binding<Bool> {
+        Binding(
+            get: { portToKill != nil },
+            set: { if !$0 { portToKill = nil } }
+        )
+    }
+
     var body: some View {
         VStack(spacing: 16) {
             // Metrics Row
@@ -114,40 +128,37 @@ struct SidebarView: View {
         .background(LucidTheme.backgroundSecondary)
         .confirmationDialog(
             "Kill Processes",
-            isPresented: Binding(
-                get: { portToKill != nil },
-                set: { if !$0 { portToKill = nil } }
-            ),
+            isPresented: portKillBinding,
             presenting: portToKill
         ) { port in
-            Button("Kill All Processes on Port \(port)", role: .destructive) {
-                let processesToKill = monitor.processes.filter { $0.ports.contains(port) }
-                var errors: [String] = []
-                for process in processesToKill {
-                    if case .failure(let error) = monitor.killProcess(process) {
-                        errors.append("\(process.name): \(error.localizedDescription)")
-                    }
-                }
-                if !errors.isEmpty {
-                    killError = errors.joined(separator: "\n")
-                }
-                portToKill = nil
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    monitor.refresh()
-                }
-            }
+            killButton(for: port)
         } message: { port in
-            let processCount = monitor.processes.filter { $0.ports.contains(port) }.count
-            Text("Are you sure you want to kill all \(processCount) process(es) using port \(port)?")
+            killDialogMessage(for: port)
         }
-        .alert("Kill Failed", isPresented: Binding(
-            get: { killError != nil },
-            set: { if !$0 { killError = nil } }
-        )) {
+        .alert("Kill Failed", isPresented: killErrorBinding) {
             Button("OK") { killError = nil }
         } message: {
             Text(killError ?? "")
         }
+    }
+
+    private func killButton(for port: UInt16) -> some View {
+        Button("Kill All Processes on Port \(port)", role: .destructive) {
+            let processesToKill = monitor.processes.filter { $0.ports.contains(port) }
+            if case .failure(let error) = monitor.killProcesses(processesToKill) {
+                killError = error.localizedDescription
+            } else {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    monitor.refresh()
+                }
+            }
+            portToKill = nil
+        }
+    }
+
+    private func killDialogMessage(for port: UInt16) -> some View {
+        let processCount = monitor.processes.filter { $0.ports.contains(port) }.count
+        return Text("Are you sure you want to kill all \(processCount) process(es) using port \(port)?")
     }
 
     private var systemInfoString: String {

@@ -127,7 +127,7 @@ function App() {
         className="flex-1 flex flex-col overflow-hidden"
         style={{ background: "#0A0A0B" }}
       >
-        {/* Top Bar — also serves as titlebar drag region */}
+        {/* Top Bar — process header */}
         <div
           className="flex items-center justify-between shrink-0"
           style={
@@ -135,13 +135,12 @@ function App() {
               height: 64,
               padding: "0 32px",
               borderBottom: "1px solid #1F1F23",
-              WebkitAppRegion: "drag",
             } as React.CSSProperties
           }
         >
           <div
-            className="flex items-center gap-3"
-            style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+            className="flex items-center"
+            style={{ gap: "16px" }}
           >
             <h1
               style={{
@@ -176,7 +175,6 @@ function App() {
 
           <div
             className="flex items-center"
-            style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
           >
             <div
               className="flex items-center"

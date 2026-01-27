@@ -44,19 +44,17 @@ export function Sidebar({
     >
       {/* Sidebar Top */}
       <div className="flex flex-col">
-        {/* Header — includes traffic lights space */}
+        {/* Header */}
         <div
           className="flex items-end h-16 shrink-0 px-5 pb-3"
           style={
             {
               borderBottom: "1px solid #1F1F23",
-              WebkitAppRegion: "drag",
-            } as React.CSSProperties
+            }
           }
         >
           <div
             className="flex items-center gap-[10px]"
-            style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
           >
             <Activity
               className="w-[22px] h-[22px]"
@@ -81,7 +79,7 @@ export function Sidebar({
         </div>
 
         {/* Nav Items */}
-        <div className="flex flex-col gap-2" style={{ padding: "16px 12px" }}>
+        <div className="flex flex-col" style={{ padding: "16px 12px", gap: "16px" }}>
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeFilter === item.id;
@@ -134,7 +132,7 @@ export function Sidebar({
         <div className="h-px w-full" style={{ background: "#1F1F23" }} />
 
         {/* System Stats */}
-        <div className="flex flex-col gap-3" style={{ padding: "16px 20px" }}>
+        <div className="flex flex-col" style={{ padding: "16px 20px", gap: "16px" }}>
           <span
             style={{
               fontFamily: "JetBrains Mono",

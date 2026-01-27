@@ -59,12 +59,13 @@ interface MetricCardProps {
 function MetricCard({ label, icon, value, data, color }: MetricCardProps) {
   return (
     <div
-      className="flex flex-col gap-2 flex-1"
+      className="flex flex-col gap-2"
       style={{
         background: "#111113",
         border: "1px solid #1F1F23",
         borderRadius: 12,
         padding: 16,
+        minWidth: 0,
       }}
     >
       {/* Header */}
@@ -114,8 +115,13 @@ export function SystemLoadCard({
 
   return (
     <div
-      className="flex w-full"
-      style={{ gap: 16, padding: "24px 32px 0 32px" }}
+      className="w-full"
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(4, 1fr)",
+        gap: 16,
+        padding: "24px 32px 0 32px",
+      }}
     >
       <MetricCard
         label="CPU"

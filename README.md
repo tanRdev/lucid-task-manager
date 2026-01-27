@@ -2,6 +2,8 @@
 
 A plain-English activity monitor for macOS built with native SwiftUI. Lucid translates cryptic process names like `mds_stores`, `configd`, and `distnoted` into human-readable descriptions — "Spotlight Search Indexer", "Configuration Daemon", "Distributed Notification Service" — so you can see what's running on your machine.
 
+![Lucid Screenshot](Resources/app-screenshot.png)
+
 ## Features
 
 - **Plain-English descriptions** — 250+ macOS processes mapped to readable names and explanations
@@ -63,6 +65,12 @@ Lucid/
     ├── LucidTheme.swift               # Color tokens, fonts
     └── GlassModifiers.swift           # Liquid Glass helpers with #available guards
 ```
+
+**Key architectural patterns:**
+- **State Management**: `@Observable` ProcessMonitor as single source of truth, injected via `@Environment`
+- **Timer Loop**: ProcessMonitor polls every 3 seconds, coordinating all services
+- **Data Flow**: Darwin APIs → ProcessMonitor → @Observable state → SwiftUI views
+- **Service Integration**: PortScanner (lsof), LLMService (actor), ProcessDictionary (250+ mappings)
 
 ## How It Works
 

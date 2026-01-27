@@ -83,11 +83,10 @@ final class ProcessMonitor {
     // MARK: - Process Management
 
     func refresh() {
-        guard !isRefreshing else { return }
-        isRefreshing = true
-
         Task { [weak self] in
             guard let self else { return }
+            guard !self.isRefreshing else { return }
+            self.isRefreshing = true
 
             // Refresh NSWorkspace app names every other cycle to reduce MainActor blocking
             self.shouldRefreshAppNames.toggle()
@@ -230,8 +229,26 @@ final class ProcessMonitor {
         return DarwinProcess.killProcess(pid: process.pid)
     }
 
+    func killProcesses(_ processes: [LucidProcess]) -> Result<Void, KillErrors> {
+        var errors: [String] = []
+        for process in processes {
+            if case .failure(let error) = killProcess(process) {
+                errors.append("\(process.name): \(error.localizedDescription)")
+            }
+        }
+        return errors.isEmpty ? .success(()) : .failure(KillErrors(errors: errors))
+    }
+
+    struct KillErrors: Error {
+        let errors: [String]
+        var localizedDescription: String {
+            errors.joined(separator: "\n")
+        }
+    }
+
     // MARK: - Private Helpers
 
+    @MainActor
     private func updateSystemStats() {
         let totalMemory = ProcessInfo.processInfo.physicalMemory
         let usedMemory = calculateUsedMemory()

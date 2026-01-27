@@ -33,6 +33,30 @@ struct DetailView: View {
     @State private var selection = Set<LucidProcess.ID>()
     @State private var killError: String?
 
+    private var filterBinding: Binding<FilterCategory> {
+        Binding(
+            get: { monitor.selectedFilter },
+            set: { monitor.selectedFilter = $0 }
+        )
+    }
+
+    private var killErrorBinding: Binding<Bool> {
+        Binding(
+            get: { killError != nil },
+            set: { if !$0 { killError = nil } }
+        )
+    }
+
+    private var killConfirmationBinding: Binding<Bool> {
+        Binding(
+            get: { killTarget != nil || !multiKillTargets.isEmpty },
+            set: { if !$0 {
+                killTarget = nil
+                multiKillTargets = []
+            }}
+        )
+    }
+
     var filteredProcesses: [LucidProcess] {
         var result = monitor.processes
 
@@ -69,10 +93,7 @@ struct DetailView: View {
             HeaderBar(
                 processCount: filteredProcesses.count,
                 searchText: $searchText,
-                selectedFilter: Binding(
-                    get: { monitor.selectedFilter },
-                    set: { monitor.selectedFilter = $0 }
-                )
+                selectedFilter: filterBinding
             )
 
             Table(filteredProcesses, selection: $selection, sortOrder: $sortOrder) {
@@ -126,92 +147,108 @@ struct DetailView: View {
                 }
             }
             .contextMenu(forSelectionType: LucidProcess.ID.self) { selectedIDs in
-                if selectedIDs.isEmpty {
-                    EmptyView()
-                } else if selectedIDs.count == 1,
-                          let id = selectedIDs.first,
-                          let process = filteredProcesses.first(where: { $0.id == id }) {
-                    // Single selection - show all options
-                    Button(role: .destructive) {
-                        killTarget = process
-                    } label: {
-                        Label("Kill Process", systemImage: "xmark.circle")
-                    }
-
-                    Divider()
-
-                    Button {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(process.exePath, forType: .string)
-                    } label: {
-                        Label("Copy Path", systemImage: "doc.on.doc")
-                    }
-
-                    Button {
-                        NSWorkspace.shared.selectFile(process.exePath, inFileViewerRootedAtPath: "")
-                    } label: {
-                        Label("Show in Finder", systemImage: "folder")
-                    }
-                } else if selectedIDs.count > 1 {
-                    // Multiple selection - only show kill
-                    Button(role: .destructive) {
-                        multiKillTargets = filteredProcesses.filter { selectedIDs.contains($0.id) }
-                    } label: {
-                        Label("Kill \(selectedIDs.count) Processes", systemImage: "xmark.circle")
-                    }
-                }
+                contextMenuContent(for: selectedIDs)
             }
             .confirmationDialog(
-                killTarget != nil ? "Kill Process" : "Kill Processes",
-                isPresented: Binding(
-                    get: { killTarget != nil || !multiKillTargets.isEmpty },
-                    set: { if !$0 {
-                        killTarget = nil
-                        multiKillTargets = []
-                    }}
-                ),
+                killDialogTitle,
+                isPresented: killConfirmationBinding,
                 presenting: killTarget ?? multiKillTargets.first
-            ) { process in
-                Button("Kill", role: .destructive) {
-                    var errors: [String] = []
-                    if let single = killTarget {
-                        if case .failure(let error) = monitor.killProcess(single) {
-                            errors.append("\(single.name): \(error.localizedDescription)")
-                        }
-                        killTarget = nil
-                    } else {
-                        for target in multiKillTargets {
-                            if case .failure(let error) = monitor.killProcess(target) {
-                                errors.append("\(target.name): \(error.localizedDescription)")
-                            }
-                        }
-                        multiKillTargets = []
-                    }
-                    if !errors.isEmpty {
-                        killError = errors.joined(separator: "\n")
-                    }
-                    selection.removeAll()
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        monitor.refresh()
-                    }
-                }
+            ) { _ in
+                killButton
             } message: { process in
-                if let single = killTarget {
-                    Text("Are you sure you want to kill \(single.name) (PID: \(single.pid))?")
-                } else {
-                    Text("Are you sure you want to kill \(multiKillTargets.count) processes?")
-                }
+                killDialogMessage(for: process)
             }
         }
         .background(LucidTheme.backgroundDark)
         .toolbar(.hidden)
-        .alert("Kill Failed", isPresented: Binding(
-            get: { killError != nil },
-            set: { if !$0 { killError = nil } }
-        )) {
+        .alert("Kill Failed", isPresented: killErrorBinding) {
             Button("OK") { killError = nil }
         } message: {
             Text(killError ?? "")
+        }
+    }
+
+    @ViewBuilder
+    private func contextMenuContent(for selectedIDs: Set<LucidProcess.ID>) -> some View {
+        if selectedIDs.isEmpty {
+            EmptyView()
+        } else if selectedIDs.count == 1,
+                  let id = selectedIDs.first,
+                  let process = filteredProcesses.first(where: { $0.id == id }) {
+            singleSelectionMenu(for: process)
+        } else if selectedIDs.count > 1 {
+            multiSelectionMenu(count: selectedIDs.count, ids: selectedIDs)
+        }
+    }
+
+    private func singleSelectionMenu(for process: LucidProcess) -> some View {
+        Group {
+            Button(role: .destructive) {
+                killTarget = process
+            } label: {
+                Label("Kill Process", systemImage: "xmark.circle")
+            }
+
+            Divider()
+
+            Button {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(process.exePath, forType: .string)
+            } label: {
+                Label("Copy Path", systemImage: "doc.on.doc")
+            }
+
+            Button {
+                NSWorkspace.shared.selectFile(process.exePath, inFileViewerRootedAtPath: "")
+            } label: {
+                Label("Show in Finder", systemImage: "folder")
+            }
+        }
+    }
+
+    private func multiSelectionMenu(count: Int, ids: Set<LucidProcess.ID>) -> some View {
+        Button(role: .destructive) {
+            multiKillTargets = filteredProcesses.filter { ids.contains($0.id) }
+        } label: {
+            Label("Kill \(count) Processes", systemImage: "xmark.circle")
+        }
+    }
+
+    private var killDialogTitle: String {
+        killTarget != nil ? "Kill Process" : "Kill Processes"
+    }
+
+    private var killButton: some View {
+        Button("Kill", role: .destructive) {
+            performKill()
+        }
+    }
+
+    private func performKill() {
+        let processesToKill: [LucidProcess]
+        if let single = killTarget {
+            processesToKill = [single]
+            killTarget = nil
+        } else {
+            processesToKill = multiKillTargets
+            multiKillTargets = []
+        }
+
+        if case .failure(let error) = monitor.killProcesses(processesToKill) {
+            killError = error.localizedDescription
+        } else {
+            selection.removeAll()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                monitor.refresh()
+            }
+        }
+    }
+
+    private func killDialogMessage(for process: LucidProcess) -> some View {
+        if let single = killTarget {
+            Text("Are you sure you want to kill \(single.name) (PID: \(single.pid))?")
+        } else {
+            Text("Are you sure you want to kill \(multiKillTargets.count) processes?")
         }
     }
 }

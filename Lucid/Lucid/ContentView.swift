@@ -2,6 +2,15 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(ProcessMonitor.self) var monitor
+    @AppStorage("appTheme") private var appTheme: String = "system"
+
+    private var colorScheme: ColorScheme? {
+        switch appTheme {
+        case "light": return .light
+        case "dark": return .dark
+        default: return nil
+        }
+    }
 
     var body: some View {
         NavigationSplitView {
@@ -9,7 +18,7 @@ struct ContentView: View {
         } detail: {
             DetailView()
         }
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(colorScheme)
     }
 }
 

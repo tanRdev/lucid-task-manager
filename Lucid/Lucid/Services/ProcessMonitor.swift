@@ -16,6 +16,15 @@ final class ProcessMonitor {
     var isRunning = false
     var lastError: String?
     var selectedFilter: FilterCategory = .all
+    var filterCounts = FilterCounts()
+    var activePorts: [UInt16] = []
+
+    struct FilterCounts {
+        var total: Int = 0
+        var system: Int = 0
+        var user: Int = 0
+        var unknown: Int = 0
+    }
 
     // MARK: - Private State
     private var timer: DispatchSourceTimer?
@@ -25,10 +34,21 @@ final class ProcessMonitor {
     private let pollInterval: TimeInterval = 3.0
     private let logger = Logger(subsystem: "com.tan.lucid", category: "ProcessMonitor")
     private let timerQueue = DispatchQueue(label: "com.tan.lucid.timer", qos: .userInitiated)
-    private var isRefreshing = false
+
+    // Thread-safe refresh guard
+    private let refreshLock = NSLock()
+    private var _isRefreshing = false
+    private var isRefreshing: Bool {
+        get { refreshLock.withLock { _isRefreshing } }
+        set { refreshLock.withLock { _isRefreshing = newValue } }
+    }
 
     // LLM service for process identification
     private let llmService = LLMService()
+
+    // Cached NSWorkspace app names (refreshed every other cycle)
+    private var appNameCache: [pid_t: String] = [:]
+    private var shouldRefreshAppNames = true
 
     // MARK: - Lifecycle
 
@@ -64,22 +84,25 @@ final class ProcessMonitor {
 
     func refresh() {
         guard !isRefreshing else { return }
+        isRefreshing = true
 
         Task { [weak self] in
             guard let self else { return }
-            self.isRefreshing = true
 
-            // Snapshot NSWorkspace running applications on the main thread
-            // to safely resolve GUI app names for process identification
-            let appNameMap: [pid_t: String] = await MainActor.run {
-                var map: [pid_t: String] = [:]
-                for app in NSWorkspace.shared.runningApplications {
-                    if let name = app.localizedName {
-                        map[app.processIdentifier] = name
+            // Refresh NSWorkspace app names every other cycle to reduce MainActor blocking
+            self.shouldRefreshAppNames.toggle()
+            if self.shouldRefreshAppNames || self.appNameCache.isEmpty {
+                self.appNameCache = await MainActor.run {
+                    var map: [pid_t: String] = [:]
+                    for app in NSWorkspace.shared.runningApplications {
+                        if let name = app.localizedName {
+                            map[app.processIdentifier] = name
+                        }
                     }
+                    return map
                 }
-                return map
             }
+            let appNameMap = self.appNameCache
 
             let pids = DarwinProcess.getAllPIDs()
             let coreCount = ProcessInfo.processInfo.activeProcessorCount
@@ -89,78 +112,109 @@ final class ProcessMonitor {
             var currentCPUTimes: [pid_t: UInt64] = [:]
 
             let elapsedSeconds = self.pollInterval
+            let prevCPUTimes = self.previousCPUTimes
+            let llm = self.llmService
 
-            // Semaphore to throttle concurrent LLM calls (max 3 at once)
-            let semaphore = DispatchSemaphore(value: 3)
+            // Batch PIDs into chunks to reduce task overhead (~8 tasks instead of ~400)
+            let chunkSize = 50
+            let pidChunks = stride(from: 0, to: pids.count, by: chunkSize).map {
+                Array(pids[$0..<min($0 + chunkSize, pids.count)])
+            }
 
-            // Process all PIDs concurrently with async/await
-            await withTaskGroup(of: LucidProcess?.self) { group in
-                for pid in pids {
+            await withTaskGroup(of: [(LucidProcess, UInt64?)].self) { group in
+                for chunk in pidChunks {
                     group.addTask {
-                        guard let name = DarwinProcess.getProcessName(pid: pid) else { return nil }
+                        var results: [(LucidProcess, UInt64?)] = []
+                        for pid in chunk {
+                            guard let name = DarwinProcess.getProcessName(pid: pid) else { continue }
 
-                        let exePath = DarwinProcess.getProcessPath(pid: pid) ?? ""
+                            let exePath = DarwinProcess.getProcessPath(pid: pid) ?? ""
 
-                        // Throttle LLM calls
-                        semaphore.wait()
-                        let (description, safety) = await ProcessDictionary.smartLookup(
-                            name: name,
-                            path: exePath,
-                            nsAppName: appNameMap[pid],
-                            llmService: self.llmService
-                        )
-                        semaphore.signal()
+                            // Fast path: dictionary/heuristic only, no LLM inference
+                            var (description, safety) = await ProcessDictionary.smartLookup(
+                                name: name,
+                                path: exePath,
+                                nsAppName: appNameMap[pid]
+                            )
 
-                        guard let info = DarwinProcess.getProcessInfo(pid: pid) else {
-                            // Root/privileged process - show zero metrics
-                            return LucidProcess(
+                            // Check LLM cache for previously identified unknowns
+                            if safety == .unknown,
+                               let cached = await llm.cachedResult(name: name, path: exePath) {
+                                description = cached.0
+                                safety = cached.1
+                            }
+
+                            let info = DarwinProcess.getProcessInfo(pid: pid)
+
+                            let cpuUsage: Double
+                            if let info {
+                                let previousNanos = prevCPUTimes[pid] ?? info.cpuNanos
+                                cpuUsage = DarwinProcess.calculateCPUPercentage(
+                                    currentNanos: info.cpuNanos,
+                                    previousNanos: previousNanos,
+                                    elapsedSeconds: elapsedSeconds,
+                                    coreCount: coreCount
+                                )
+                            } else {
+                                cpuUsage = 0
+                            }
+
+                            let process = LucidProcess(
                                 pid: pid,
                                 name: name,
                                 description: description,
-                                cpuUsage: 0,
-                                memoryBytes: 0,
+                                cpuUsage: cpuUsage,
+                                memoryBytes: info?.memoryBytes ?? 0,
                                 safety: safety,
                                 exePath: exePath,
                                 ports: portMap[pid] ?? []
                             )
+                            results.append((process, info?.cpuNanos))
                         }
-
-                        let previousNanos = self.previousCPUTimes[pid] ?? info.cpuNanos
-                        let cpuUsage = DarwinProcess.calculateCPUPercentage(
-                            currentNanos: info.cpuNanos,
-                            previousNanos: previousNanos,
-                            elapsedSeconds: elapsedSeconds,
-                            coreCount: coreCount
-                        )
-
-                        return LucidProcess(
-                            pid: pid,
-                            name: name,
-                            description: description,
-                            cpuUsage: cpuUsage,
-                            memoryBytes: info.memoryBytes,
-                            safety: safety,
-                            exePath: exePath,
-                            ports: portMap[pid] ?? []
-                        )
+                        return results
                     }
                 }
 
-                // Collect all results
-                for await process in group {
-                    if let process = process {
+                for await chunk in group {
+                    for (process, cpuNanos) in chunk {
                         newProcesses.append(process)
-                        if let info = DarwinProcess.getProcessInfo(pid: process.pid) {
-                            currentCPUTimes[process.pid] = info.cpuNanos
+                        if let nanos = cpuNanos {
+                            currentCPUTimes[process.pid] = nanos
                         }
                     }
                 }
             }
 
+            // Identify unknown processes via LLM in background (non-blocking)
+            let unknowns = newProcesses.filter { $0.safety == .unknown }
+            if !unknowns.isEmpty {
+                let llm = self.llmService
+                Task.detached(priority: .background) {
+                    for process in unknowns {
+                        if let (desc, safety) = await llm.identifyProcess(name: process.name, path: process.exePath) {
+                            // Results will be picked up on the next refresh cycle via the LLM cache
+                            _ = (desc, safety)
+                        }
+                    }
+                }
+            }
+
+            let finalProcesses = newProcesses.sorted()
+            let finalCPUTimes = currentCPUTimes
+            let counts = FilterCounts(
+                total: newProcesses.count,
+                system: newProcesses.count(where: { $0.safety == .system }),
+                user: newProcesses.count(where: { $0.safety == .user }),
+                unknown: newProcesses.count(where: { $0.safety == .unknown })
+            )
+            let ports = Array(Set(newProcesses.flatMap(\.ports))).sorted()
+
             await MainActor.run { [weak self] in
                 guard let self else { return }
-                self.previousCPUTimes = currentCPUTimes
-                self.processes = newProcesses.sorted()
+                self.previousCPUTimes = finalCPUTimes
+                self.processes = finalProcesses
+                self.filterCounts = counts
+                self.activePorts = ports
                 self.updateSystemStats()
                 self.isRefreshing = false
             }
@@ -168,7 +222,12 @@ final class ProcessMonitor {
     }
 
     func killProcess(_ process: LucidProcess) -> Result<Void, DarwinError> {
-        DarwinProcess.killProcess(pid: process.pid)
+        // Verify the PID still refers to the same process before killing
+        guard let currentName = DarwinProcess.getProcessName(pid: process.pid),
+              currentName == process.name else {
+            return .failure(.failedToKill(pid: process.pid, description: "Process no longer exists or has changed"))
+        }
+        return DarwinProcess.killProcess(pid: process.pid)
     }
 
     // MARK: - Private Helpers

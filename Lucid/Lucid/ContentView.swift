@@ -20,6 +20,7 @@ struct DetailView: View {
         .init(\.cpuUsage, order: .reverse)
     ]
     @State private var killTarget: LucidProcess?
+    @State private var hoveredPID: pid_t?
 
     var filteredProcesses: [LucidProcess] {
         var result = monitor.processes
@@ -70,6 +71,12 @@ struct DetailView: View {
                             .font(.system(.body, design: .monospaced))
                         SafetyTag(safety: process.safety)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .onHover { hovering in
+                        if hovering { hoveredPID = process.pid }
+                        else if hoveredPID == process.pid { hoveredPID = nil }
+                    }
                 }
 
                 TableColumn("Description", value: \.description) { process in
@@ -77,22 +84,46 @@ struct DetailView: View {
                         .font(.system(.body, design: .default))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                        .onHover { hovering in
+                            if hovering { hoveredPID = process.pid }
+                            else if hoveredPID == process.pid { hoveredPID = nil }
+                        }
                 }
 
                 TableColumn("CPU", value: \.cpuUsage) { process in
                     Text(process.cpuFormatted)
                         .font(.system(.body, design: .monospaced))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                        .onHover { hovering in
+                            if hovering { hoveredPID = process.pid }
+                            else if hoveredPID == process.pid { hoveredPID = nil }
+                        }
                 }
 
                 TableColumn("Memory", value: \.memoryBytes) { process in
                     Text(process.memoryFormatted)
                         .font(.system(.body, design: .monospaced))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                        .onHover { hovering in
+                            if hovering { hoveredPID = process.pid }
+                            else if hoveredPID == process.pid { hoveredPID = nil }
+                        }
                 }
 
                 TableColumn("Port") { process in
                     Text(process.portsFormatted)
                         .font(.system(.body, design: .monospaced))
                         .foregroundStyle(process.ports.isEmpty ? .tertiary : .primary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                        .onHover { hovering in
+                            if hovering { hoveredPID = process.pid }
+                            else if hoveredPID == process.pid { hoveredPID = nil }
+                        }
                 }
                 .width(min: 60, ideal: 80)
 
@@ -100,10 +131,16 @@ struct DetailView: View {
                     Text(process.exePath)
                         .font(.system(.caption, design: .monospaced))
                         .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                        .onHover { hovering in
+                            if hovering { hoveredPID = process.pid }
+                            else if hoveredPID == process.pid { hoveredPID = nil }
+                        }
                 }
 
                 TableColumn("") { process in
-                    HoverKillButton(process: process) {
+                    HoverKillButton(process: process, isRowHovered: hoveredPID == process.pid) {
                         killTarget = process
                     }
                 }
@@ -139,5 +176,6 @@ struct DetailView: View {
             }
         }
         .background(Color(red: 0.06, green: 0.06, blue: 0.07))
+        .toolbar(.hidden)
     }
 }

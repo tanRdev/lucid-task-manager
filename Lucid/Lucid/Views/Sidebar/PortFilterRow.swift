@@ -37,6 +37,7 @@ struct PortFilterRow: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
+            .contentShape(Rectangle())
             .background(
                 isActive ?
                 Color(red: 0.15, green: 0.15, blue: 0.2) :

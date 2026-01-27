@@ -33,6 +33,7 @@ struct FilterButton: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
+            .contentShape(Rectangle())
             .background(
                 isActive ?
                 Color(red: 0.15, green: 0.15, blue: 0.2) :

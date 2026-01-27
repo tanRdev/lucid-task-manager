@@ -12,16 +12,40 @@ actor LLMService {
     private let llamaCppPath: String
     private let modelPath: String
 
+    // Disk cache location
+    private let cacheFileURL: URL
+
     init(llamaCppPath: String = "/opt/homebrew/bin/llama-cli",
          modelPath: String = "~/.lucid/models/tinyllama-1.1b-chat.gguf") {
         self.llamaCppPath = llamaCppPath
         self.modelPath = (modelPath as NSString).expandingTildeInPath
+
+        let cacheDir = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".lucid")
+        let cacheURL = cacheDir.appendingPathComponent("llm-cache.json")
+        self.cacheFileURL = cacheURL
+
+        // Load persisted cache synchronously during init
+        if FileManager.default.fileExists(atPath: cacheURL.path),
+           let data = try? Data(contentsOf: cacheURL),
+           let entries = try? JSONDecoder().decode([String: CacheEntry].self, from: data) {
+            for (key, entry) in entries {
+                if let safety = Safety(rawValue: entry.safety) {
+                    self.cache[key] = (entry.description, safety)
+                }
+            }
+        }
     }
 
     /// Check if LLM is available on the system
     func isAvailable() -> Bool {
         FileManager.default.fileExists(atPath: llamaCppPath) &&
         FileManager.default.fileExists(atPath: modelPath)
+    }
+
+    /// Check the cache only (no inference). Returns immediately.
+    func cachedResult(name: String, path: String) -> (String, Safety)? {
+        cache["\(name)|\(path)"]
     }
 
     /// Identify a process using LLM
@@ -55,10 +79,33 @@ actor LLMService {
             return nil
         }
 
-        // Cache and return
+        // Cache in memory and persist to disk
         cache[cacheKey] = parsed
+        saveCacheToDisk()
         logger.info("LLM identified \(name) as \(parsed.0)")
         return parsed
+    }
+
+    // MARK: - Disk Persistence
+
+    private struct CacheEntry: Codable {
+        let description: String
+        let safety: String
+    }
+
+    private func saveCacheToDisk() {
+        var entries: [String: CacheEntry] = [:]
+        for (key, (description, safety)) in cache {
+            entries[key] = CacheEntry(description: description, safety: safety.rawValue)
+        }
+        do {
+            let dir = cacheFileURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(entries)
+            try data.write(to: cacheFileURL, options: .atomic)
+        } catch {
+            logger.warning("Failed to save LLM disk cache: \(error)")
+        }
     }
 
     private func buildPrompt(name: String, path: String) -> String {

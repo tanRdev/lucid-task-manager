@@ -1,8 +1,22 @@
 import Foundation
 
 struct PortScanner {
-    /// Runs `lsof -iTCP -sTCP:LISTEN -n -P` and returns a dictionary mapping pid -> [port]
+    private static let lock = NSLock()
+    private static var cachedPorts: [pid_t: [UInt16]] = [:]
+    private static var cacheTimestamp: Date = .distantPast
+    private static let cacheTTL: TimeInterval = 15.0
+
+    /// Runs `lsof -iTCP -sTCP:LISTEN -n -P` and returns a dictionary mapping pid -> [port].
+    /// Results are cached for 15 seconds since port bindings change infrequently.
     static func getListeningPorts() -> [pid_t: [UInt16]] {
+        lock.lock()
+        if Date().timeIntervalSince(cacheTimestamp) < cacheTTL {
+            let cached = cachedPorts
+            lock.unlock()
+            return cached
+        }
+        lock.unlock()
+
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/sbin/lsof")
         process.arguments = ["-iTCP", "-sTCP:LISTEN", "-n", "-P"]
@@ -14,17 +28,23 @@ struct PortScanner {
         do {
             try process.run()
         } catch {
-            return [:]
+            return cachedPorts
         }
 
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
 
-        guard let output = String(data: data, encoding: .utf8) else {
-            return [:]
+        guard process.terminationStatus == 0,
+              let output = String(data: data, encoding: .utf8) else {
+            return cachedPorts
         }
 
-        return parseLsofOutput(output)
+        let result = parseLsofOutput(output)
+        lock.lock()
+        cachedPorts = result
+        cacheTimestamp = Date()
+        lock.unlock()
+        return result
     }
 
     /// Parse lsof output lines. Example line:

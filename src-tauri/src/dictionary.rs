@@ -1,0 +1,252 @@
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Safety {
+    System,  // Green - core OS process, do not kill
+    User,    // Yellow - user app, safe to kill
+    Unknown, // Red - unrecognized or high resource
+}
+
+type ProcessEntry = (&'static str, Safety);
+
+/// Returns a description and safety category for a known macOS process
+pub fn lookup(name: &str) -> Option<(&'static str, Safety)> {
+    PROCESS_DICTIONARY.get(name).copied()
+}
+
+lazy_static::lazy_static! {
+    static ref PROCESS_DICTIONARY: HashMap<&'static str, ProcessEntry> = {
+        let mut m = HashMap::new();
+
+        // Core macOS System Processes (Green - System)
+        m.insert("kernel_task", ("macOS Kernel", Safety::System));
+        m.insert("launchd", ("System Launch Daemon", Safety::System));
+        m.insert("SystemUIServer", ("System UI Server", Safety::System));
+        m.insert("WindowServer", ("Window Manager", Safety::System));
+        m.insert("Dock", ("macOS Dock", Safety::System));
+        m.insert("Finder", ("macOS Finder", Safety::System));
+        m.insert("loginwindow", ("Login Window Manager", Safety::System));
+        m.insert("UserEventAgent", ("User Event Agent", Safety::System));
+        m.insert("mds", ("Spotlight Metadata Server", Safety::System));
+        m.insert("mds_stores", ("Spotlight Search Indexer", Safety::System));
+        m.insert("mdworker", ("Spotlight Worker", Safety::System));
+        m.insert("mdworker_shared", ("Spotlight Shared Worker", Safety::System));
+        m.insert("mdflagwriter", ("Spotlight Flag Writer", Safety::System));
+        m.insert("mdutil", ("Spotlight Utility", Safety::System));
+        m.insert("hidd", ("Human Interface Device Daemon", Safety::System));
+        m.insert("coreaudiod", ("Core Audio Daemon", Safety::System));
+        m.insert("bluetoothd", ("Bluetooth Daemon", Safety::System));
+        m.insert("blued", ("Bluetooth Server", Safety::System));
+        m.insert("airportd", ("WiFi Manager", Safety::System));
+        m.insert("notifyd", ("Notification Server", Safety::System));
+        m.insert("syslogd", ("System Logging Daemon", Safety::System));
+        m.insert("apsd", ("Apple Push Notification Service", Safety::System));
+        m.insert("securityd", ("Security Framework Daemon", Safety::System));
+        m.insert("opendirectoryd", ("Directory Services", Safety::System));
+        m.insert("configd", ("Configuration Daemon", Safety::System));
+        m.insert("networkd", ("Network Management Daemon", Safety::System));
+        m.insert("distnoted", ("Distributed Notification Service", Safety::System));
+        m.insert("coreservicesd", ("Core Services Daemon", Safety::System));
+        m.insert("CoreServicesUIAgent", ("Core Services UI Agent", Safety::System));
+        m.insert("fontd", ("Font Management Daemon", Safety::System));
+        m.insert("cfprefsd", ("Preferences Daemon", Safety::System));
+        m.insert("discoveryd", ("Network Discovery Daemon", Safety::System));
+        m.insert("nsurlsessiond", ("URL Session Daemon", Safety::System));
+        m.insert("nsurlstoraged", ("URL Storage Daemon", Safety::System));
+        m.insert("powerd", ("Power Management Daemon", Safety::System));
+        m.insert("thermald", ("Thermal Management", Safety::System));
+        m.insert("kernelmanagerd", ("Kernel Extension Manager", Safety::System));
+        m.insert("kextd", ("Kernel Extension Daemon", Safety::System));
+        m.insert("fseventsd", ("File System Events Daemon", Safety::System));
+        m.insert("revisiond", ("iCloud Versions Daemon", Safety::System));
+        m.insert("bird", ("iCloud Sync Daemon", Safety::System));
+        m.insert("cloudd", ("iCloud Daemon", Safety::System));
+        m.insert("cloudpaird", ("iCloud Device Pairing", Safety::System));
+        m.insert("AppleSpell", ("Spell Check Service", Safety::System));
+        m.insert("AirPlayUIAgent", ("AirPlay UI Agent", Safety::System));
+        m.insert("AirPlayXPCHelper", ("AirPlay Helper", Safety::System));
+        m.insert("accountsd", ("Accounts Framework", Safety::System));
+        m.insert("CalendarAgent", ("Calendar Background Agent", Safety::System));
+        m.insert("ContactsAgent", ("Contacts Background Agent", Safety::System));
+        m.insert("notificationcenterui", ("Notification Center UI", Safety::System));
+        m.insert("ControlCenter", ("Control Center", Safety::System));
+        m.insert("Control Center", ("Control Center", Safety::System));
+        m.insert("talagent", ("Time and Location Agent", Safety::System));
+        m.insert("LaterAgent", ("Notification Scheduling Agent", Safety::System));
+        m.insert("AppSSOAgent", ("App Single Sign-On Agent", Safety::System));
+        m.insert("CommCenter", ("Communication Center", Safety::System));
+        m.insert("corecaptured", ("Core Capture Daemon", Safety::System));
+        m.insert("ScopedBookmarkAgent", ("Bookmark Scope Agent", Safety::System));
+        m.insert("ViewBridgeAuxiliary", ("View Bridge Service", Safety::System));
+        m.insert("WiFiAgent", ("WiFi Agent", Safety::System));
+        m.insert("sharingd", ("Sharing Services Daemon", Safety::System));
+        m.insert("rapportd", ("Continuity Daemon", Safety::System));
+        m.insert("imagent", ("iMessage Agent", Safety::System));
+        m.insert("SafariBookmarksSyncAgent", ("Safari Bookmarks Sync", Safety::System));
+        m.insert("findmydeviced", ("Find My Device Daemon", Safety::System));
+        m.insert("softwareupdated", ("Software Update Daemon", Safety::System));
+        m.insert("storedownloadd", ("App Store Download Manager", Safety::System));
+        m.insert("trustd", ("Certificate Trust Daemon", Safety::System));
+        m.insert("gamecontrollerd", ("Game Controller Daemon", Safety::System));
+        m.insert("displaypolicyd", ("Display Policy Daemon", Safety::System));
+        m.insert("displayservicesd", ("Display Services Daemon", Safety::System));
+        m.insert("secinitd", ("Security Initialization", Safety::System));
+        m.insert("secd", ("Security Daemon", Safety::System));
+        m.insert("authd", ("Authorization Daemon", Safety::System));
+        m.insert("lsd", ("Launch Services Daemon", Safety::System));
+        m.insert("iconservicesd", ("Icon Services Daemon", Safety::System));
+        m.insert("iconservicesagent", ("Icon Services Agent", Safety::System));
+        m.insert("symptomsd", ("Network Symptoms Daemon", Safety::System));
+        m.insert("networkserviceproxy", ("Network Service Proxy", Safety::System));
+        m.insert("socketfilterfw", ("Application Firewall", Safety::System));
+        m.insert("tccd", ("Privacy Preferences Daemon", Safety::System));
+        m.insert("locationd", ("Location Services Daemon", Safety::System));
+        m.insert("warmd", ("System Warmup Daemon", Safety::System));
+        m.insert("watchdogd", ("Watchdog Daemon", Safety::System));
+        m.insert("keybagd", ("Keychain Keybag Daemon", Safety::System));
+        m.insert("deleted", ("Deleted Process Cache", Safety::System));
+        m.insert("LaterAgent", ("Reminder Agent", Safety::System));
+        m.insert("amfird", ("App Management Framework", Safety::System));
+        m.insert("appstoreagent", ("App Store Agent", Safety::System));
+        m.insert("AssetCacheLocatorService", ("Content Cache Locator", Safety::System));
+        m.insert("biometrickitd", ("Touch ID & Face ID Manager", Safety::System));
+        m.insert("calaccessd", ("Calendar Access Daemon", Safety::System));
+        m.insert("CategoriesService", ("Content Categories Service", Safety::System));
+        m.insert("cloudphotod", ("iCloud Photos Daemon", Safety::System));
+        m.insert("colorsync.displayservices", ("ColorSync Display Services", Safety::System));
+        m.insert("ContextStoreAgent", ("Context Store Agent", Safety::System));
+        m.insert("coreduetd", ("Core Duet Daemon", Safety::System));
+        m.insert("corekdld", ("Core Kernel Debug Link", Safety::System));
+        m.insert("corespeechd", ("Core Speech Daemon", Safety::System));
+        m.insert("CoreLocationAgent", ("Location Agent", Safety::System));
+        m.insert("CrashReporterSupportHelper", ("Crash Reporter Helper", Safety::System));
+        m.insert("deleted", ("Cleanup Service", Safety::System));
+        m.insert("familycircled", ("Family Sharing Daemon", Safety::System));
+        m.insert("fileproviderd", ("File Provider Daemon", Safety::System));
+        m.insert("FindMyFriend", ("Find My Friends Service", Safety::System));
+        m.insert("FMCore", ("Find My Core Service", Safety::System));
+        m.insert("identityservicesd", ("Identity Services Daemon", Safety::System));
+        m.insert("IMAutomaticHistoryDeletionAgent", ("Message History Cleaner", Safety::System));
+        m.insert("IMDPersistenceAgent", ("Message Persistence Agent", Safety::System));
+        m.insert("IMRemoteURLConnectionAgent", ("Message URL Agent", Safety::System));
+        m.insert("kbd", ("Keyboard Services", Safety::System));
+        m.insert("keyboardservicesd", ("Keyboard Services Daemon", Safety::System));
+        m.insert("languageassetd", ("Language Asset Daemon", Safety::System));
+        m.insert("mediaremoted", ("Media Remote Daemon", Safety::System));
+        m.insert("mediaserverd", ("Media Server Daemon", Safety::System));
+        m.insert("nearbyd", ("Nearby Interaction Daemon", Safety::System));
+        m.insert("netbiosd", ("NetBIOS Daemon", Safety::System));
+        m.insert("nfcd", ("NFC Daemon", Safety::System));
+        m.insert("parentalcontrolsd", ("Parental Controls", Safety::System));
+        m.insert("parsecd", ("Parsing Daemon", Safety::System));
+        m.insert("pbs", ("Pasteboard Server", Safety::System));
+        m.insert("pkd", ("Extension Manager", Safety::System));
+        m.insert("ProtectedCloudKeySyncing", ("iCloud Key Sync", Safety::System));
+        m.insert("quicklookd", ("Quick Look Daemon", Safety::System));
+        m.insert("QuickLookUIService", ("Quick Look UI Service", Safety::System));
+        m.insert("replayd", ("Screen Recording Service", Safety::System));
+        m.insert("sandboxd", ("Sandbox Daemon", Safety::System));
+        m.insert("searchpartyd", ("Spotlight Party Daemon", Safety::System));
+        m.insert("storeassetd", ("App Store Asset Manager", Safety::System));
+        m.insert("swcd", ("Software Update Control", Safety::System));
+        m.insert("SubmitDiagInfo", ("Diagnostic Submission", Safety::System));
+        m.insert("syncdefaultsd", ("Sync Defaults Daemon", Safety::System));
+        m.insert("sysmond", ("System Monitor Daemon", Safety::System));
+        m.insert("universalaccessd", ("Accessibility Daemon", Safety::System));
+        m.insert("universalaccessAuthWarn", ("Accessibility Warning", Safety::System));
+        m.insert("usbd", ("USB Daemon", Safety::System));
+        m.insert("useractivityd", ("User Activity Daemon", Safety::System));
+        m.insert("videosubscriptionsd", ("Video Subscriptions Service", Safety::System));
+        m.insert("wifip2pd", ("WiFi Peer-to-Peer", Safety::System));
+        m.insert("XprotectService", ("Malware Protection Service", Safety::System));
+
+        // User Applications (Yellow - User)
+        m.insert("Safari", ("Safari Web Browser", Safety::User));
+        m.insert("Google Chrome", ("Chrome Web Browser", Safety::User));
+        m.insert("Google Chrome Helper", ("Chrome Helper Process", Safety::User));
+        m.insert("Chrome Helper", ("Chrome Helper Process", Safety::User));
+        m.insert("Firefox", ("Firefox Web Browser", Safety::User));
+        m.insert("Arc", ("Arc Web Browser", Safety::User));
+        m.insert("Brave Browser", ("Brave Web Browser", Safety::User));
+        m.insert("Mail", ("Mail Application", Safety::User));
+        m.insert("Messages", ("Messages Application", Safety::User));
+        m.insert("FaceTime", ("FaceTime Application", Safety::User));
+        m.insert("Photos", ("Photos Application", Safety::User));
+        m.insert("Music", ("Music Application", Safety::User));
+        m.insert("iTunes", ("iTunes Application", Safety::User));
+        m.insert("TV", ("Apple TV Application", Safety::User));
+        m.insert("Podcasts", ("Podcasts Application", Safety::User));
+        m.insert("Books", ("Books Application", Safety::User));
+        m.insert("Maps", ("Maps Application", Safety::User));
+        m.insert("Calendar", ("Calendar Application", Safety::User));
+        m.insert("Contacts", ("Contacts Application", Safety::User));
+        m.insert("Notes", ("Notes Application", Safety::User));
+        m.insert("Reminders", ("Reminders Application", Safety::User));
+        m.insert("Preview", ("Preview Application", Safety::User));
+        m.insert("TextEdit", ("Text Editor", Safety::User));
+        m.insert("Terminal", ("Terminal Application", Safety::User));
+        m.insert("Console", ("Console Application", Safety::User));
+        m.insert("Activity Monitor", ("Activity Monitor", Safety::User));
+        m.insert("System Settings", ("System Settings", Safety::User));
+        m.insert("System Preferences", ("System Preferences", Safety::User));
+        m.insert("App Store", ("App Store Application", Safety::User));
+        m.insert("Keynote", ("Keynote Presentation App", Safety::User));
+        m.insert("Pages", ("Pages Word Processor", Safety::User));
+        m.insert("Numbers", ("Numbers Spreadsheet App", Safety::User));
+        m.insert("Xcode", ("Xcode IDE", Safety::User));
+        m.insert("Microsoft Word", ("Microsoft Word", Safety::User));
+        m.insert("Microsoft Excel", ("Microsoft Excel", Safety::User));
+        m.insert("Microsoft PowerPoint", ("Microsoft PowerPoint", Safety::User));
+        m.insert("Microsoft Outlook", ("Microsoft Outlook", Safety::User));
+        m.insert("Slack", ("Slack Messaging", Safety::User));
+        m.insert("Slack Helper", ("Slack Helper Process", Safety::User));
+        m.insert("Discord", ("Discord Communication", Safety::User));
+        m.insert("Discord Helper", ("Discord Helper Process", Safety::User));
+        m.insert("Zoom", ("Zoom Video Conferencing", Safety::User));
+        m.insert("zoom.us", ("Zoom Video Conferencing", Safety::User));
+        m.insert("Microsoft Teams", ("Microsoft Teams", Safety::User));
+        m.insert("Spotify", ("Spotify Music", Safety::User));
+        m.insert("Spotify Helper", ("Spotify Helper Process", Safety::User));
+        m.insert("VLC", ("VLC Media Player", Safety::User));
+        m.insert("IINA", ("IINA Media Player", Safety::User));
+        m.insert("Finder", ("File Browser", Safety::User));
+        m.insert("Telegram", ("Telegram Messaging", Safety::User));
+        m.insert("WhatsApp", ("WhatsApp Messaging", Safety::User));
+        m.insert("Notion", ("Notion Workspace", Safety::User));
+        m.insert("Notion Helper", ("Notion Helper Process", Safety::User));
+        m.insert("Obsidian", ("Obsidian Notes", Safety::User));
+        m.insert("Visual Studio Code", ("VS Code Editor", Safety::User));
+        m.insert("Code Helper", ("VS Code Helper Process", Safety::User));
+        m.insert("IntelliJ IDEA", ("IntelliJ IDEA IDE", Safety::User));
+        m.insert("PyCharm", ("PyCharm IDE", Safety::User));
+        m.insert("Sublime Text", ("Sublime Text Editor", Safety::User));
+        m.insert("Atom", ("Atom Editor", Safety::User));
+        m.insert("iTerm2", ("iTerm2 Terminal", Safety::User));
+        m.insert("Alacritty", ("Alacritty Terminal", Safety::User));
+        m.insert("Docker", ("Docker Desktop", Safety::User));
+        m.insert("Docker Desktop", ("Docker Desktop", Safety::User));
+        m.insert("Postman", ("Postman API Client", Safety::User));
+        m.insert("Figma", ("Figma Design Tool", Safety::User));
+        m.insert("Adobe Photoshop", ("Adobe Photoshop", Safety::User));
+        m.insert("Adobe Illustrator", ("Adobe Illustrator", Safety::User));
+        m.insert("Adobe Premiere Pro", ("Adobe Premiere Pro", Safety::User));
+        m.insert("Final Cut Pro", ("Final Cut Pro", Safety::User));
+        m.insert("1Password", ("1Password Password Manager", Safety::User));
+        m.insert("Dropbox", ("Dropbox Cloud Storage", Safety::User));
+        m.insert("Google Drive", ("Google Drive Cloud Storage", Safety::User));
+        m.insert("OneDrive", ("Microsoft OneDrive", Safety::User));
+        m.insert("Alfred", ("Alfred Productivity App", Safety::User));
+        m.insert("Raycast", ("Raycast Launcher", Safety::User));
+        m.insert("Rectangle", ("Rectangle Window Manager", Safety::User));
+        m.insert("Magnet", ("Magnet Window Manager", Safety::User));
+        m.insert("Bartender", ("Bartender Menu Bar Manager", Safety::User));
+        m.insert("CleanMyMac X", ("CleanMyMac Utility", Safety::User));
+        m.insert("MonitorControl", ("Monitor Control Utility", Safety::User));
+        m.insert("The Unarchiver", ("The Unarchiver", Safety::User));
+        m.insert("Transmission", ("Transmission BitTorrent", Safety::User));
+
+        m
+    };
+}

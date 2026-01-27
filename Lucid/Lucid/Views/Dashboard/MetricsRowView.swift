@@ -3,8 +3,13 @@ import SwiftUI
 struct MetricsRowView: View {
     @Environment(ProcessMonitor.self) var monitor
 
+    private let columns = [
+        GridItem(.flexible(), spacing: 8),
+        GridItem(.flexible(), spacing: 8)
+    ]
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        LazyVGrid(columns: columns, spacing: 8) {
             MetricCardView(
                 label: "CPU",
                 value: String(format: "%.1f%%", monitor.stats.cpuUsage),

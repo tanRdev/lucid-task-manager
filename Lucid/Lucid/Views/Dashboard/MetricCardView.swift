@@ -13,20 +13,27 @@ struct MetricCardView: View {
                 Image(systemName: icon)
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(color)
+                    .frame(width: 14, height: 14)
 
                 Text(label)
                     .font(.system(.caption2, design: .default))
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                Spacer()
+                Spacer(minLength: 0)
 
                 Text(value)
                     .font(.system(.caption, design: .monospaced))
                     .fontWeight(.semibold)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: true)
             }
         }
         .padding(8)
         .background(Color(red: 0.12, green: 0.12, blue: 0.14))
         .cornerRadius(6)
+        .help("\(label): \(value)")
     }
 }

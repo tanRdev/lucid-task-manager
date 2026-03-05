@@ -4,6 +4,23 @@ A plain-English activity monitor for macOS built with native SwiftUI. Lucid tran
 
 ![Lucid Screenshot](Resources/app-screenshot.png)
 
+## Project Status (Revived)
+
+This repository has been cleaned up for long-term portfolio use:
+
+- Build tooling is now architecture-agnostic (`swift build --show-bin-path`) rather than hardcoded to `arm64` paths.
+- Legacy duplicate bundle scripts now route through one maintained bundle workflow.
+- A GitHub Actions workflow now verifies tests and app-bundle creation on macOS for every push/PR.
+
+### Branch Audit
+
+The active development branch for this revival work is `work`. If you have additional remote branches in your own clone, compare them before release with:
+
+```bash
+git branch -a
+git log --oneline --decorate --graph --all
+```
+
 ## Features
 
 - **Plain-English descriptions** — 250+ macOS processes mapped to readable names and explanations
@@ -33,8 +50,19 @@ A plain-English activity monitor for macOS built with native SwiftUI. Lucid tran
 
 ## Getting Started
 
-1. Open `Lucid/Lucid.xcodeproj` in Xcode
+### Xcode
+
+1. Open `Lucid/Package.swift` in Xcode
 2. Build and run (⌘R)
+
+### Command line (macOS)
+
+```bash
+cd Lucid
+make app      # builds executable + Lucid.app bundle
+make run      # builds and launches Lucid.app
+make test     # runs unit tests
+```
 
 Lucid disables App Sandbox to access process information. Development builds sign automatically; distribution requires a Developer ID certificate.
 
@@ -68,7 +96,7 @@ Lucid/
 
 **Key architectural patterns:**
 - **State Management**: `@Observable` ProcessMonitor as single source of truth, injected via `@Environment`
-- **Timer Loop**: ProcessMonitor polls every 3 seconds, coordinating all services
+- **Timer Loop**: ProcessMonitor polls every 2 seconds, coordinating all services
 - **Data Flow**: Darwin APIs → ProcessMonitor → @Observable state → SwiftUI views
 - **Service Integration**: PortScanner (lsof), LLMService (actor), ProcessDictionary (250+ mappings)
 
@@ -111,6 +139,15 @@ Lucid/
 2. Export with Developer ID certificate
 3. Notarize with Apple
 4. Distribute as DMG or ZIP
+
+## Continuous Integration
+
+GitHub Actions runs on macOS for each push and pull request:
+
+1. `swift test`
+2. `./build-app.sh debug`
+
+Workflow file: `.github/workflows/ci.yml`.
 
 ## License
 

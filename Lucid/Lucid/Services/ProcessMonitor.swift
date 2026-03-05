@@ -31,7 +31,7 @@ final class ProcessMonitor {
     private var previousCPUTimes: [pid_t: UInt64] = [:]
     private var previousCPUHistory: [Double] = []
     private var previousMemoryHistory: [Double] = []
-    private let pollInterval: TimeInterval = 3.0
+    private let pollInterval: TimeInterval = 2.0
     private let logger = Logger(subsystem: "com.tan.lucid", category: "ProcessMonitor")
     private let timerQueue = DispatchQueue(label: "com.tan.lucid.timer", qos: .userInitiated)
 
@@ -87,6 +87,9 @@ final class ProcessMonitor {
             guard let self else { return }
             guard !self.isRefreshing else { return }
             self.isRefreshing = true
+            defer {
+                self.isRefreshing = false
+            }
 
             // Refresh NSWorkspace app names every other cycle to reduce MainActor blocking
             self.shouldRefreshAppNames.toggle()
@@ -215,7 +218,6 @@ final class ProcessMonitor {
                 self.filterCounts = counts
                 self.activePorts = ports
                 self.updateSystemStats()
-                self.isRefreshing = false
             }
         }
     }

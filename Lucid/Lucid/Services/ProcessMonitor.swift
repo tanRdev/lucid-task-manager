@@ -205,9 +205,9 @@ final class ProcessMonitor {
             let finalCPUTimes = currentCPUTimes
             let counts = FilterCounts(
                 total: newProcesses.count,
-                system: newProcesses.count(where: { $0.safety == .system }),
-                user: newProcesses.count(where: { $0.safety == .user }),
-                unknown: newProcesses.count(where: { $0.safety == .unknown })
+                system: newProcesses.filter { $0.safety == .system }.count,
+                user: newProcesses.filter { $0.safety == .user }.count,
+                unknown: newProcesses.filter { $0.safety == .unknown }.count
             )
             let ports = Array(Set(newProcesses.flatMap(\.ports))).sorted()
 

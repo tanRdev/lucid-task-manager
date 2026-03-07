@@ -183,13 +183,12 @@ final class ProcessMonitor {
                 }
             }
 
-            let finalProcesses = newProcesses.sorted()
             let finalCPUTimes = currentCPUTimes
 
             await MainActor.run { [weak self] in
                 guard let self else { return }
                 self.previousCPUTimes = finalCPUTimes
-                self.processStore.updateProcesses(finalProcesses)
+                self.processStore.updateProcesses(newProcesses)
                 self.updateSystemStats()
             }
         }

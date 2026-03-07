@@ -59,19 +59,7 @@ final class ProcessStore {
     }
 
     func removeProcess(_ process: LucidProcess) {
-        processes.removeAll { $0.pid == process.pid }
-        processByPid.removeValue(forKey: process.pid)
-
-        // Update port map
-        for port in process.ports {
-            portProcessMap[port]?.removeAll { $0 == process.pid }
-            if portProcessMap[port]?.isEmpty == true {
-                portProcessMap.removeValue(forKey: port)
-                activePorts.removeAll { $0 == port }
-            }
-        }
-
-        // Recalculate counts
-        updateProcesses(processes)
+        // updateProcesses will rebuild all data structures from scratch
+        updateProcesses(processes.filter { $0.pid != process.pid })
     }
 }

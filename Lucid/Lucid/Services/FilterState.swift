@@ -77,11 +77,14 @@ final class FilterState {
         debounceTask = Task { [weak self] in
             guard let self else { return }
 
-            try? await Task.sleep(for: self.debounceInterval)
-
-            guard !Task.isCancelled else { return }
-
-            self.debouncedSearchText = self.searchText
+            do {
+                try await Task.sleep(for: self.debounceInterval)
+                self.debouncedSearchText = self.searchText
+            } catch is CancellationError {
+                // Task was cancelled, do nothing
+            } catch {
+                // Other errors shouldn't happen with Task.sleep, but handle just in case
+            }
         }
     }
 }

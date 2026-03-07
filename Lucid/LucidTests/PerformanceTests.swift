@@ -68,9 +68,12 @@ final class PerformanceTests: XCTestCase {
         }
     }
 
-    // MARK: - Thread Safety Tests
+    // MARK: - Actor Isolation Tests
 
-    func testConcurrentAccessToProcessStore() async {
+    /// Verifies that multiple sequential accesses to @MainActor-isolated ProcessStore
+    /// complete without data races. Note: Since ProcessStore is @MainActor, tasks are
+    /// serialized on the main actor - this tests isolation safety, not true concurrency.
+    func testSequentialAccessToProcessStore() async {
         let processes = generateProcesses(count: 100)
         processStore.updateProcesses(processes)
 

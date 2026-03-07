@@ -24,19 +24,23 @@ struct ContentView: View {
 
 struct DetailView: View {
     @Environment(ProcessMonitor.self) var monitor
-    @State private var searchText = ""
-    @State private var sortOrder: [KeyPathComparator<LucidProcess>] = [
-        .init(\.cpuUsage, order: .reverse)
-    ]
+    @Environment(ProcessStore.self) var processStore
+    @Environment(FilterState.self) var filterState
+
     @State private var killTarget: LucidProcess?
     @State private var multiKillTargets: [LucidProcess] = []
     @State private var selection = Set<LucidProcess.ID>()
     @State private var killError: String?
 
-    private var filterBinding: Binding<FilterCategory> {
+    // Computed filtered processes - now delegated to FilterState
+    var filteredProcesses: [LucidProcess] {
+        filterState.filter(processStore.processes)
+    }
+
+    private var sortOrderBinding: Binding<[KeyPathComparator<LucidProcess>]> {
         Binding(
-            get: { monitor.selectedFilter },
-            set: { monitor.selectedFilter = $0 }
+            get: { filterState.sortOrder },
+            set: { filterState.applySortOrder($0) }
         )
     }
 
@@ -57,46 +61,11 @@ struct DetailView: View {
         )
     }
 
-    var filteredProcesses: [LucidProcess] {
-        var result = monitor.processes
-
-        // Apply filter
-        switch monitor.selectedFilter {
-        case .all:
-            break
-        case .system:
-            result = result.filter { $0.safety == .system }
-        case .user:
-            result = result.filter { $0.safety == .user }
-        case .unknown:
-            result = result.filter { $0.safety == .unknown }
-        case .port(let port):
-            result = result.filter { $0.ports.contains(port) }
-        }
-
-        // Apply search
-        if !searchText.isEmpty {
-            result = result.filter { process in
-                process.name.localizedCaseInsensitiveContains(searchText) ||
-                process.description.localizedCaseInsensitiveContains(searchText)
-            }
-        }
-
-        // Apply sort
-        result.sort(using: sortOrder)
-
-        return result
-    }
-
     var body: some View {
         VStack(spacing: 0) {
-            HeaderBar(
-                processCount: filteredProcesses.count,
-                searchText: $searchText,
-                selectedFilter: filterBinding
-            )
+            HeaderBar(processCount: filteredProcesses.count)
 
-            Table(filteredProcesses, selection: $selection, sortOrder: $sortOrder) {
+            Table(filteredProcesses, selection: $selection, sortOrder: sortOrderBinding) {
                 TableColumn("Name", value: \.name) { process in
                     Text(process.name)
                         .font(.system(.body, design: .monospaced))

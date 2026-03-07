@@ -9,6 +9,9 @@ struct LucidApp: App {
         WindowGroup {
             ContentView()
                 .environment(monitor)
+                .environment(monitor.processStore)
+                .environment(monitor.statsStore)
+                .environment(monitor.filterState)
                 .frame(minWidth: 1100, minHeight: 750)
                 .onAppear {
                     monitor.start()
@@ -25,13 +28,13 @@ struct LucidApp: App {
                 forName: NSApplication.didResignActiveNotification,
                 object: nil, queue: .main
             ) { _ in
-                monitor.stop()
+                Task { @MainActor in monitor.stop() }
             },
             NotificationCenter.default.addObserver(
                 forName: NSApplication.didBecomeActiveNotification,
                 object: nil, queue: .main
             ) { _ in
-                monitor.start()
+                Task { @MainActor in monitor.start() }
             }
         ]
     }

@@ -2,6 +2,9 @@ import SwiftUI
 
 struct SidebarView: View {
     @Environment(ProcessMonitor.self) var monitor
+    @Environment(ProcessStore.self) var processStore
+    @Environment(FilterState.self) var filterState
+
     @State private var portToKill: UInt16?
     @State private var killError: String?
 
@@ -21,108 +24,24 @@ struct SidebarView: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            // Metrics Row
+            // Metrics Row - now with history
             MetricsRowView()
 
             Divider()
 
             // Filters Section
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Filters")
-                    .font(.headline)
-                    .padding(.horizontal)
+            FiltersSection()
 
-                VStack(spacing: 8) {
-                    FilterButton(
-                        label: "All Processes",
-                        icon: "square.grid.2x2",
-                        count: monitor.filterCounts.total,
-                        isActive: monitor.selectedFilter == .all,
-                        action: { monitor.selectedFilter = .all }
-                    )
-
-                    FilterButton(
-                        label: "System",
-                        icon: "gearshape.fill",
-                        count: monitor.filterCounts.system,
-                        isActive: monitor.selectedFilter == .system,
-                        action: { monitor.selectedFilter = .system }
-                    )
-
-                    FilterButton(
-                        label: "User",
-                        icon: "person.fill",
-                        count: monitor.filterCounts.user,
-                        isActive: monitor.selectedFilter == .user,
-                        action: { monitor.selectedFilter = .user }
-                    )
-
-                    FilterButton(
-                        label: "Unknown",
-                        icon: "questionmark.circle.fill",
-                        count: monitor.filterCounts.unknown,
-                        isActive: monitor.selectedFilter == .unknown,
-                        action: { monitor.selectedFilter = .unknown }
-                    )
-                }
-                .padding(.horizontal)
-            }
-
-            // Active Ports Section
-            if !monitor.activePorts.isEmpty {
+            // Active Ports Section - now uses pre-computed portProcessMap
+            if !processStore.activePorts.isEmpty {
                 Divider()
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Active Ports")
-                        .font(.headline)
-                        .padding(.horizontal)
-
-                    ScrollView {
-                        VStack(spacing: 4) {
-                            ForEach(monitor.activePorts, id: \.self) { port in
-                                PortFilterRow(
-                                    port: port,
-                                    processCount: monitor.processes.filter { $0.ports.contains(port) }.count,
-                                    isActive: monitor.selectedFilter == .port(port),
-                                    onSelect: { monitor.selectedFilter = .port(port) },
-                                    onKill: { portToKill = port }
-                                )
-                            }
-                        }
-                        .padding(.horizontal)
-                    }
-                    .frame(maxHeight: 200)
-                }
+                ActivePortsSection(portToKill: $portToKill)
             }
 
             Spacer()
 
             // Footer
-            VStack(alignment: .leading, spacing: 8) {
-                Divider()
-                HStack(spacing: 8) {
-                    if monitor.isRunning {
-                        PulsingStatusDot()
-                    } else {
-                        Circle()
-                            .fill(Color.gray)
-                            .frame(width: 8, height: 8)
-                    }
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(monitor.isRunning ? "Monitoring" : "Idle")
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(monitor.isRunning ? Color.green : .secondary)
-                        Text(systemInfoString)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                    }
-                    Spacer()
-                }
-                .padding(.horizontal)
-                .padding(.bottom, 8)
-            }
+            SidebarFooter()
         }
         .padding(.vertical, 16)
         .background(LucidTheme.backgroundSecondary)
@@ -144,7 +63,7 @@ struct SidebarView: View {
 
     private func killButton(for port: UInt16) -> some View {
         Button("Kill All Processes on Port \(port)", role: .destructive) {
-            let processesToKill = monitor.processes.filter { $0.ports.contains(port) }
+            let processesToKill = processStore.processes.filter { $0.ports.contains(port) }
             if case .failure(let error) = monitor.killProcesses(processesToKill) {
                 killError = error.localizedDescription
             } else {
@@ -157,8 +76,124 @@ struct SidebarView: View {
     }
 
     private func killDialogMessage(for port: UInt16) -> some View {
-        let processCount = monitor.processes.filter { $0.ports.contains(port) }.count
+        let processCount = processStore.processes(for: port).count
         return Text("Are you sure you want to kill all \(processCount) process(es) using port \(port)?")
+    }
+}
+
+// MARK: - Filters Section
+
+struct FiltersSection: View {
+    @Environment(ProcessStore.self) var processStore
+    @Environment(FilterState.self) var filterState
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Filters")
+                .font(.headline)
+                .padding(.horizontal)
+
+            VStack(spacing: 8) {
+                FilterButton(
+                    label: "All Processes",
+                    icon: "square.grid.2x2",
+                    count: processStore.filterCounts.total,
+                    isActive: filterState.selectedFilter == .all,
+                    action: { filterState.applyFilter(.all) }
+                )
+
+                FilterButton(
+                    label: "System",
+                    icon: "gearshape.fill",
+                    count: processStore.filterCounts.system,
+                    isActive: filterState.selectedFilter == .system,
+                    action: { filterState.applyFilter(.system) }
+                )
+
+                FilterButton(
+                    label: "User",
+                    icon: "person.fill",
+                    count: processStore.filterCounts.user,
+                    isActive: filterState.selectedFilter == .user,
+                    action: { filterState.applyFilter(.user) }
+                )
+
+                FilterButton(
+                    label: "Unknown",
+                    icon: "questionmark.circle.fill",
+                    count: processStore.filterCounts.unknown,
+                    isActive: filterState.selectedFilter == .unknown,
+                    action: { filterState.applyFilter(.unknown) }
+                )
+            }
+            .padding(.horizontal)
+        }
+    }
+}
+
+// MARK: - Active Ports Section
+
+struct ActivePortsSection: View {
+    @Environment(ProcessStore.self) var processStore
+    @Environment(FilterState.self) var filterState
+    @Binding var portToKill: UInt16?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Active Ports")
+                .font(.headline)
+                .padding(.horizontal)
+
+            ScrollView {
+                VStack(spacing: 4) {
+                    ForEach(processStore.activePorts, id: \.self) { port in
+                        PortFilterRow(
+                            port: port,
+                            processCount: processStore.processes(for: port).count,
+                            isActive: filterState.selectedFilter == .port(port),
+                            onSelect: { filterState.applyFilter(.port(port)) },
+                            onKill: { portToKill = port }
+                        )
+                    }
+                }
+                .padding(.horizontal)
+            }
+            .frame(maxHeight: 200)
+        }
+    }
+}
+
+// MARK: - Sidebar Footer
+
+struct SidebarFooter: View {
+    @Environment(ProcessMonitor.self) var monitor
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Divider()
+            HStack(spacing: 8) {
+                if monitor.isRunning {
+                    PulsingStatusDot()
+                } else {
+                    Circle()
+                        .fill(Color.gray)
+                        .frame(width: 8, height: 8)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(monitor.isRunning ? "Monitoring" : "Idle")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(monitor.isRunning ? Color.green : .secondary)
+                    Text(systemInfoString)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+                Spacer()
+            }
+            .padding(.horizontal)
+            .padding(.bottom, 8)
+        }
     }
 
     private var systemInfoString: String {

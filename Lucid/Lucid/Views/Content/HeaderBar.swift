@@ -1,10 +1,17 @@
 import SwiftUI
 
 struct HeaderBar: View {
-    let processCount: Int
-    @Binding var searchText: String
-    @Binding var selectedFilter: FilterCategory
+    @Environment(FilterState.self) var filterState
     @State private var showSettings = false
+
+    let processCount: Int
+
+    private var searchTextBinding: Binding<String> {
+        Binding(
+            get: { filterState.searchText },
+            set: { filterState.searchText = $0 }
+        )
+    }
 
     var body: some View {
         HStack(spacing: 16) {
@@ -28,25 +35,7 @@ struct HeaderBar: View {
             .buttonStyle(.plain)
             .help("Settings")
 
-            HStack(spacing: 12) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
-
-                TextField("Search processes...", text: $searchText)
-                    .textFieldStyle(.plain)
-
-                if !searchText.isEmpty {
-                    Button(action: { searchText = "" }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(LucidTheme.backgroundTertiary)
-            .cornerRadius(8)
-            .frame(maxWidth: 250)
+            SearchField(text: searchTextBinding)
         }
         .padding(16)
         .background(LucidTheme.backgroundSecondary)
@@ -54,5 +43,34 @@ struct HeaderBar: View {
         .sheet(isPresented: $showSettings) {
             SettingsSheet()
         }
+    }
+}
+
+// MARK: - Search Field Component
+
+struct SearchField: View {
+    @Binding var text: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+
+            TextField("Search processes...", text: $text)
+                .textFieldStyle(.plain)
+
+            if !text.isEmpty {
+                Button(action: { text = "" }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(LucidTheme.backgroundTertiary)
+        .cornerRadius(8)
+        .frame(maxWidth: 250)
     }
 }

@@ -44,7 +44,7 @@ final class ProcessMonitor {
 
     // MARK: - Lifecycle
 
-    init() {}
+    nonisolated init() {}
 
     func start() {
         guard !isRunning else { return }

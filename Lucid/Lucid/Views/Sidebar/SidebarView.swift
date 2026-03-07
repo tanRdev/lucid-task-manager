@@ -61,6 +61,7 @@ struct SidebarView: View {
         }
     }
 
+    @MainActor
     private func killButton(for port: UInt16) -> some View {
         Button("Kill All Processes on Port \(port)", role: .destructive) {
             let processesToKill = processStore.processes.filter { $0.ports.contains(port) }
@@ -75,6 +76,7 @@ struct SidebarView: View {
         }
     }
 
+    @MainActor
     private func killDialogMessage(for port: UInt16) -> some View {
         let processCount = processStore.processes(for: port).count
         return Text("Are you sure you want to kill all \(processCount) process(es) using port \(port)?")

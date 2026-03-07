@@ -1,118 +1,142 @@
-# <img src="Resources/app-icon.png" alt="Lucid" height="32" style="vertical-align: middle; margin-right: 6px;"> Lucid
+<!-- prettier-ignore -->
+<div align="center">
 
-A plain-English activity monitor for macOS built with native SwiftUI. Lucid translates cryptic process names like `mds_stores`, `configd`, and `distnoted` into human-readable descriptions — "Spotlight Search Indexer", "Configuration Daemon", "Distributed Notification Service" — so you can see what's running on your machine.
+<img src="Resources/icon.svg" alt="Lucid" height="80" />
+
+# Lucid
+
+**A plain-English activity monitor for macOS**
+
+[![Swift](https://img.shields.io/badge/Swift-5.9+-FA7343?style=flat-square&logo=swift&logoColor=white)](https://swift.org)
+[![macOS](https://img.shields.io/badge/macOS-14+-000000?style=flat-square&logo=apple&logoColor=white)](https://www.apple.com/macos)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
+
+[Features](#features) • [Installation](#installation) • [Usage](#usage) • [Architecture](#architecture)
 
 ![Lucid Screenshot](Resources/app-screenshot.png)
 
+</div>
+
+Lucid translates cryptic process names like `mds_stores`, `configd`, and `distnoted` into human-readable descriptions — **Spotlight Search Indexer**, **Configuration Daemon**, **Distributed Notification Service** — so you actually know what's running on your Mac.
+
 ## Features
 
-- **Plain-English descriptions** — 250+ macOS processes mapped to readable names and explanations
-- **Safety categories** — Each process tagged System (protected), User (your apps), or Unknown, with color-coded indicators
-- **Real-time monitoring** — CPU and memory usage updated every 2 seconds with sparkline charts
-- **Process termination** — Kill processes from the UI with confirmation dialogs and protection for system processes
-- **Native performance** — SwiftUI Table with virtualization handles thousands of processes efficiently
-- **Liquid Glass design** — macOS 26 Tahoe glass effects on compatible systems, with Material fallbacks for older versions
-- **Pure Swift** — No dependencies, only Apple frameworks (SwiftUI, Charts, Darwin)
+- **Plain-English descriptions** — 450+ macOS processes mapped to readable names
+- **Safety categories** — Color-coded System (protected), User (your apps), or Unknown
+- **Real-time monitoring** — CPU and memory usage with sparkline charts
+- **Port tracking** — See which processes are listening on which ports
+- **Process termination** — Kill processes with confirmation dialogs and system protection
+- **Liquid Glass design** — Native macOS 26 Tahoe glass effects with Material fallbacks
+- **Pure Swift** — Zero dependencies, only Apple frameworks
 
-## Tech Stack
+## Installation
 
-| Layer | Technology |
-|-------|-----------|
-| UI Framework | SwiftUI (macOS 14+) |
-| Design System | Liquid Glass (macOS 26) with Material fallbacks |
-| Charts | Swift Charts |
-| Process Monitoring | Darwin C APIs (`libproc.h`, `sysctl`) |
-| State Management | `@Observable` + `@Environment` |
-| Language | Swift 5.9+ |
+### Prerequisites
 
-## Prerequisites
+- Xcode 15+
+- macOS Sonoma 14.0+
 
-- **Xcode 15+** — Required for SwiftUI and Swift 5.9 features
-- **macOS Sonoma 14.0+** — Deployment target for `@Observable` macro
-- **macOS Tahoe 26.0+** — Optional, for Liquid Glass effects
-
-## Getting Started
-
-### Xcode
-
-1. Open `Lucid/Package.swift` in Xcode
-2. Build and run (⌘R)
-
-### Command line (macOS)
+### Build from Source
 
 ```bash
-cd Lucid
-make app      # builds executable + Lucid.app bundle
-make run      # builds and launches Lucid.app
-make test     # runs unit tests
+git clone https://github.com/your-username/lucid-task-manager.git
+cd lucid-task-manager/Lucid
+make app    # Build Lucid.app
+make run    # Build and launch
 ```
 
-Lucid disables App Sandbox to access process information. Development builds sign automatically; distribution requires a Developer ID certificate.
+Or open `Lucid/Package.swift` in Xcode and press ⌘R.
+
+> [!NOTE]
+> Lucid disables App Sandbox to access process information. Development builds sign automatically; distribution requires a Developer ID certificate.
+
+## Usage
+
+1. Launch Lucid
+2. Browse processes in the table — sorted by CPU by default
+3. Use the sidebar to filter by category (System, User, Unknown, or by port)
+4. Search by process name or description
+5. Right-click to kill processes, copy paths, or reveal in Finder
+
+### Safety Indicators
+
+| Color | Category | Description |
+|-------|----------|-------------|
+| 🟢 Green | System | Protected macOS processes — cannot be killed |
+| 🟡 Yellow | User | Your applications — can be terminated safely |
+| ⚪ Gray | Unknown | Unidentified processes |
 
 ## Architecture
 
 ```
 Lucid/
-├── LucidApp.swift                     # @main, WindowGroup, environment injection
-├── ContentView.swift                  # NavigationSplitView (sidebar + detail)
-│
+├── LucidApp.swift                 # @main entry point
+├── ContentView.swift              # NavigationSplitView layout
 ├── Models/
-│   ├── LucidProcess.swift             # Process data model
-│   ├── Safety.swift                   # Safety enum (system/user/unknown)
-│   └── SystemStats.swift              # Aggregated metrics + history
-│
+│   ├── LucidProcess.swift         # Process data model
+│   └── Safety.swift               # Safety enum
 ├── Services/
-│   ├── ProcessMonitor.swift           # @Observable: Timer polling, refresh, kill
-│   ├── DarwinProcess.swift            # C interop: proc_listallpids, proc_pidinfo
-│   └── ProcessDictionary.swift        # Static dictionary: 250+ process mappings
-│
+│   ├── ProcessMonitor.swift       # @Observable state, polling loop
+│   ├── DarwinProcess.swift        # C interop for process APIs
+│   ├── ProcessDictionary.swift    # 450+ process mappings
+│   └── PortScanner.swift          # lsof-based port detection
 ├── Views/
-│   ├── Sidebar/                       # Filter buttons + system overview
-│   ├── Content/                       # Table + header + kill confirmation
-│   ├── Dashboard/                     # Metric cards + sparklines
-│   └── Shared/                        # Reusable components
-│
+│   ├── Sidebar/                   # Filters + system overview
+│   ├── Content/                   # Process table + header
+│   └── Dashboard/                 # Metrics + sparklines
 └── Theme/
-    ├── LucidTheme.swift               # Color tokens, fonts
-    └── GlassModifiers.swift           # Liquid Glass helpers with #available guards
+    └── GlassModifiers.swift       # Liquid Glass effects
 ```
 
-**Key architectural patterns:**
-- **State Management**: `@Observable` ProcessMonitor as single source of truth, injected via `@Environment`
-- **Timer Loop**: ProcessMonitor polls every 2 seconds, coordinating all services
-- **Data Flow**: Darwin APIs → ProcessMonitor → @Observable state → SwiftUI views
-- **Service Integration**: PortScanner (lsof), LLMService (actor), ProcessDictionary (250+ mappings)
+**Key patterns:**
+- `@Observable` ProcessMonitor as single source of truth
+- Timer polling every 2 seconds
+- Darwin C APIs for process enumeration
 
 ## How It Works
 
-Lucid uses Darwin C APIs for process enumeration and monitoring:
+Lucid uses Darwin C APIs for process monitoring:
 
-- `proc_listallpids()` — Enumerate all running processes
-- `proc_pidinfo(pid, PROC_PIDTASKINFO)` — Get CPU time (nanoseconds) and resident memory
-- `proc_name(pid)` — Get process name (max 16 chars)
-- `proc_pidpath(pid)` — Get executable path
-- `NSWorkspace.shared.runningApplications` — Get full GUI app names (workaround for truncation)
+| API | Purpose |
+|-----|---------|
+| `proc_listallpids()` | Enumerate all running processes |
+| `proc_pidinfo()` | Get CPU time and resident memory |
+| `proc_name()` | Get process name (max 16 chars) |
+| `proc_pidpath()` | Get executable path |
+| `NSWorkspace` | Get full GUI app names |
 
-CPU percentage is computed from nanosecond deltas in `pti_total_user` and `pti_total_system` between samples. A static dictionary maps 250+ process names to human-readable descriptions and safety categories.
+CPU percentage is computed from nanosecond deltas in `pti_total_user` and `pti_total_system` between samples.
 
-**Limitations:**
-- Root processes appear with 0 CPU/memory without elevated privileges
-- App Sandbox is disabled for process visibility (not Mac App Store compatible)
-- `proc_name` truncates at 16 characters; GUI apps use `NSWorkspace` for full names
+> [!WARNING]
+> Root processes appear with 0 CPU/memory without elevated privileges. App Sandbox is disabled for process visibility.
 
-## Building & Distribution
+## FAQ
 
-Distribution builds require a Developer ID certificate and Apple notarization.
+<details>
+<summary>Why do some processes show 0% CPU or memory?</summary>
 
-## Continuous Integration
+Root/sudo processes have limited visibility through Darwin APIs without elevated privileges.
+</details>
 
-GitHub Actions runs on macOS for each push and pull request:
+<details>
+<summary>Can I distribute this on the Mac App Store?</summary>
 
-1. `swift test`
-2. `./build-app.sh debug`
+No. Lucid requires access to process information incompatible with App Sandbox. Distribution requires a Developer ID certificate and Apple notarization.
+</details>
 
-Workflow file: `.github/workflows/ci.yml`.
+<details>
+<summary>How does Lucid get full app names?</summary>
 
-## License
+The `proc_name` API truncates at 16 characters. Lucid works around this using `NSWorkspace.shared.runningApplications` to get full application names for GUI apps.
+</details>
 
-MIT
+## Development
+
+```bash
+cd Lucid
+make test    # Run unit tests
+make app     # Build Lucid.app
+make run     # Build and launch
+```
+
+CI runs on macOS 14 via GitHub Actions: `swift test` + `./build-app.sh debug`

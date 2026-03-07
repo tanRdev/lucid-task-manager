@@ -33,10 +33,12 @@ struct DetailView: View {
     @State private var killError: String?
 
     // Computed filtered processes - now delegated to FilterState
+    @MainActor
     var filteredProcesses: [LucidProcess] {
         filterState.filter(processStore.processes)
     }
 
+    @MainActor
     private var sortOrderBinding: Binding<[KeyPathComparator<LucidProcess>]> {
         Binding(
             get: { filterState.sortOrder },
@@ -193,6 +195,7 @@ struct DetailView: View {
         }
     }
 
+    @MainActor
     private func performKill() {
         let processesToKill: [LucidProcess]
         if let single = killTarget {

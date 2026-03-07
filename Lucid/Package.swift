@@ -18,6 +18,10 @@ let package = Package(
             name: "Lucid",
             dependencies: [],
             path: "Lucid",
+            exclude: [
+                "Info.plist",
+                "Lucid.entitlements"
+            ],
             resources: [
                 .copy("Assets.xcassets")
             ]

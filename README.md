@@ -4,18 +4,6 @@ A plain-English activity monitor for macOS built with native SwiftUI. Lucid tran
 
 ![Lucid Screenshot](Resources/app-screenshot.png)
 
-## Build & CI Improvements
-
-This repository has been updated with improved build tooling and continuous integration:
-
-- Build tooling is now architecture-agnostic (`swift build --show-bin-path`) supporting both Intel and Apple Silicon Macs.
-- Legacy duplicate bundle scripts consolidated into one maintained workflow.
-- A GitHub Actions workflow now verifies tests and app-bundle creation on macOS for every push/PR.
-
-### Development Branches
-
-The primary development branch is `master`. Additional feature branches may exist for specific improvements.
-
 ## Features
 
 - **Plain-English descriptions** — 250+ macOS processes mapped to readable names and explanations
@@ -23,7 +11,7 @@ The primary development branch is `master`. Additional feature branches may exis
 - **Real-time monitoring** — CPU and memory usage updated every 2 seconds with sparkline charts
 - **Process termination** — Kill processes from the UI with confirmation dialogs and protection for system processes
 - **Native performance** — SwiftUI Table with virtualization handles thousands of processes efficiently
-- **Liquid Glass design** — macOS 26+ glass effects on compatible systems, with Material fallbacks for older macOS versions
+- **Liquid Glass design** — macOS 26 Tahoe glass effects on compatible systems, with Material fallbacks for older versions
 - **Pure Swift** — No dependencies, only Apple frameworks (SwiftUI, Charts, Darwin)
 
 ## Tech Stack
@@ -31,7 +19,7 @@ The primary development branch is `master`. Additional feature branches may exis
 | Layer | Technology |
 |-------|-----------|
 | UI Framework | SwiftUI (macOS 14+) |
-| Design System | Liquid Glass (macOS 26+) with Material fallbacks |
+| Design System | Liquid Glass (macOS 26) with Material fallbacks |
 | Charts | Swift Charts |
 | Process Monitoring | Darwin C APIs (`libproc.h`, `sysctl`) |
 | State Management | `@Observable` + `@Environment` |
@@ -41,7 +29,7 @@ The primary development branch is `master`. Additional feature branches may exis
 
 - **Xcode 15+** — Required for SwiftUI and Swift 5.9 features
 - **macOS Sonoma 14.0+** — Deployment target for `@Observable` macro
-- **macOS Sequoia 26.0+** — Optional, for Liquid Glass effects
+- **macOS Tahoe 26.0+** — Optional, for Liquid Glass effects
 
 ## Getting Started
 
@@ -97,43 +85,24 @@ Lucid/
 
 ## How It Works
 
-1. **Process enumeration** — Darwin C APIs (`proc_listallpids`, `proc_pidinfo`) enumerate all running processes
-2. **Process dictionary** — A static Swift dictionary maps 250+ process names to descriptions and safety categories
-3. **CPU calculation** — CPU percentage computed from nanosecond deltas in `pti_total_user` and `pti_total_system` between samples
-4. **Hybrid naming** — Combines `NSWorkspace.runningApplications` (full GUI app names) with `proc_name` (daemon names)
-5. **SwiftUI Table** — Native macOS table with sorting, selection, and virtualization
-6. **Timer polling** — `ProcessMonitor` fires every 2 seconds on the main thread
-7. **Liquid Glass** — `#available(macOS 26, *)` guards apply glass effects on compatible systems, dark cards on older versions
+Lucid uses Darwin C APIs for process enumeration and monitoring:
 
-## Process Monitoring Details
-
-### Darwin C APIs Used
-
-- `proc_listallpids()` — Get all process IDs
+- `proc_listallpids()` — Enumerate all running processes
 - `proc_pidinfo(pid, PROC_PIDTASKINFO)` — Get CPU time (nanoseconds) and resident memory
 - `proc_name(pid)` — Get process name (max 16 chars)
 - `proc_pidpath(pid)` — Get executable path
 - `NSWorkspace.shared.runningApplications` — Get full GUI app names (workaround for truncation)
-- `kill(pid, SIGTERM)` — Terminate process
 
-### Limitations
+CPU percentage is computed from nanosecond deltas in `pti_total_user` and `pti_total_system` between samples. A static dictionary maps 250+ process names to human-readable descriptions and safety categories.
 
-- **Root processes** — Cannot read task info for root-owned processes without elevated privileges; these appear with 0 CPU/memory
-- **App Sandbox** — The app disables the sandbox for process visibility, making it ineligible for Mac App Store distribution
-- **Name truncation** — `proc_name` is limited to 16 characters; GUI apps use `NSWorkspace` for full names
+**Limitations:**
+- Root processes appear with 0 CPU/memory without elevated privileges
+- App Sandbox is disabled for process visibility (not Mac App Store compatible)
+- `proc_name` truncates at 16 characters; GUI apps use `NSWorkspace` for full names
 
 ## Building & Distribution
 
-### Development
-1. Open in Xcode
-2. Build and run (⌘R)
-3. Code signing is automatic for development
-
-### Distribution
-1. Build for release (Product → Archive)
-2. Export with Developer ID certificate
-3. Notarize with Apple
-4. Distribute as DMG or ZIP
+Distribution builds require a Developer ID certificate and Apple notarization.
 
 ## Continuous Integration
 

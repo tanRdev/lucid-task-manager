@@ -1,6 +1,7 @@
-.PHONY: all build test app run clean install
+.PHONY: all build test app run clean install dmg
 
 CONFIG ?= debug
+VERSION ?= 1.0.0
 
 all: app
 
@@ -21,6 +22,9 @@ install: app
 	BIN_PATH="$$(swift build --configuration $(CONFIG) --show-bin-path)" && \
 	cp -R "$$BIN_PATH/Lucid.app" /Applications/
 
+dmg:
+	./create-dmg.sh $(CONFIG) $(VERSION)
+
 clean:
 	swift package clean
-	rm -rf .build
+	rm -rf .build dist

@@ -3,18 +3,20 @@
 
 <img src="Resources/icon.svg" alt="Lucid" height="80" />
 
-# Lucid
+<h1>Lucid</h1>
 
-A plain-English activity monitor for macOS built with native SwiftUI.
+<p>A plain-English activity monitor for macOS built with native SwiftUI.</p>
 
-[![Swift](https://img.shields.io/badge/Swift-6.2-FA7343?style=flat-square&logo=swift&logoColor=white)](https://swift.org)
-[![macOS](https://img.shields.io/badge/macOS-14+-000000?style=flat-square&logo=apple&logoColor=white)](https://www.apple.com/macos)
-[![CI](https://img.shields.io/github/actions/workflow/status/tanRdev/lucid-task-manager/ci.yml?branch=master&style=flat-square&label=CI)](https://github.com/tanRdev/lucid-task-manager/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/tanRdev/lucid-task-manager?style=flat-square)](https://github.com/tanRdev/lucid-task-manager/releases)
+<p>
+  <a href="https://swift.org"><img src="https://img.shields.io/badge/Swift-6.2-FA7343?style=flat-square&logo=swift&logoColor=white" alt="Swift"></a>
+  <a href="https://www.apple.com/macos"><img src="https://img.shields.io/badge/macOS-14+-000000?style=flat-square&logo=apple&logoColor=white" alt="macOS"></a>
+  <a href="https://github.com/tanRdev/lucid-task-manager/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/tanRdev/lucid-task-manager/ci.yml?branch=master&style=flat-square&label=CI" alt="CI"></a>
+  <a href="https://github.com/tanRdev/lucid-task-manager/releases"><img src="https://img.shields.io/github/v/release/tanRdev/lucid-task-manager?style=flat-square" alt="Release"></a>
+</p>
 
-[Quick Start](#quick-start) · [Installation](#installation) · [Usage](#usage) · [Architecture](#architecture) · [Development](#development) · [Resources](#resources)
+<p><a href="#quick-start">Quick Start</a> · <a href="#installation">Installation</a> · <a href="#usage">Usage</a> · <a href="#architecture">Architecture</a> · <a href="#development">Development</a> · <a href="#resources">Resources</a></p>
 
-![Lucid Screenshot](Resources/app-screenshot.png)
+<img src="Resources/app-screenshot.png" alt="Lucid Screenshot" />
 
 </div>
 

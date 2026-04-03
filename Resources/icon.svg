@@ -1,13 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  <defs>
-    <linearGradient id="orangeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#fb923c;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#ea580c;stop-opacity:1" />
-    </linearGradient>
-  </defs>
-  <rect width="1024" height="1024" fill="url(#orangeGradient)" rx="184"/>
-  <g transform="translate(256, 256) scale(2.13)" fill="none" stroke="white" stroke-width="28" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="8" y="8" width="176" height="176" rx="16" stroke-width="24"/>
-    <rect x="48" y="48" width="96" height="96" rx="8" stroke-width="20"/>
+  <rect width="1024" height="1024" rx="220" fill="#ffffff"/>
+  <g transform="translate(184 184) scale(27.3333333333)">
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M3.75 4.5C3.75 4.08579 4.08579 3.75 4.5 3.75H19.5C19.9142 3.75 20.25 4.08579 20.25 4.5V19.5C20.25 19.9142 19.9142 20.25 19.5 20.25H4.5C4.08579 20.25 3.75 19.9142 3.75 19.5V4.5ZM8.29297 12.2928L12.293 8.29285L13.7072 9.70706L9.70718 13.7071L8.29297 12.2928ZM14.293 12.2928L12.293 14.2928L13.7072 15.7071L15.7072 13.7071L14.293 12.2928Z" fill="#000000"/>
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M8.5 4.5V2H10.5V4.5H8.5ZM13.5 4.5V2H15.5V4.5H13.5ZM2 8.5H4.5V10.5H2V8.5ZM19.5 8.5H22V10.5H19.5V8.5ZM2 13.5H4.5V15.5H2V13.5ZM19.5 13.5H22V15.5H19.5V13.5ZM8.5 22V19.5H10.5V22H8.5ZM13.5 22V19.5H15.5V22H13.5Z" fill="#000000"/>
   </g>
 </svg>

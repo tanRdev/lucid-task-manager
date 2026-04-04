@@ -73,6 +73,16 @@ Or open `Lucid/Package.swift` in Xcode and run the app there.
 > [!NOTE]
 > Lucid disables App Sandbox so it can inspect running processes. Development builds work locally; distributing the app outside development requires Developer ID signing and notarization.
 
+### First Launch
+
+macOS may display a message that the app cannot be verified. To open it:
+
+1. **Right-click** (or Control-click) Lucid.app in Finder.
+2. Select **Open** from the context menu.
+3. Click **Open** in the dialog that appears.
+
+You only need to do this once. After that, Lucid opens normally.
+
 ## Usage
 
 1. Launch Lucid.

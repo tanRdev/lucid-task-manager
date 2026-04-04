@@ -1,47 +1,75 @@
 import SwiftUI
+import AppKit
 
 struct LucidTheme {
 
     // MARK: - Accent (Vibrant, Cool)
-    /// Primary accent: vibrant electric blue
-    static let accentPrimary = Color(red: 0.35, green: 0.65, blue: 1.0)
+    static let accentPrimary = Color(
+        light: Color(red: 0.20, green: 0.50, blue: 0.90),
+        dark: Color(red: 0.35, green: 0.65, blue: 1.0)
+    )
 
-    /// Accent hover/pressed state: slightly lighter
-    static let accentHover = Color(red: 0.50, green: 0.75, blue: 1.0)
+    static let accentHover = Color(
+        light: Color(red: 0.30, green: 0.60, blue: 0.95),
+        dark: Color(red: 0.50, green: 0.75, blue: 1.0)
+    )
 
-    /// Accent muted: for secondary indicators
-    static let accentMuted = Color(red: 0.25, green: 0.45, blue: 0.75)
+    static let accentMuted = Color(
+        light: Color(red: 0.15, green: 0.35, blue: 0.65),
+        dark: Color(red: 0.25, green: 0.45, blue: 0.75)
+    )
 
-    // MARK: - Backgrounds (Deeper, Neutral Dark)
-    /// Base canvas: rich near-black with cool undertone
-    static let backgroundBase = Color(red: 0.05, green: 0.05, blue: 0.06)
+    // MARK: - Backgrounds
+    static let backgroundBase = Color(
+        light: Color(white: 0.97),
+        dark: Color(red: 0.05, green: 0.05, blue: 0.06)
+    )
 
-    /// Surface: cards, panels, sections
-    static let backgroundSurface = Color(red: 0.08, green: 0.09, blue: 0.10)
+    static let backgroundSurface = Color(
+        light: Color(white: 0.94),
+        dark: Color(red: 0.08, green: 0.09, blue: 0.10)
+    )
 
-    /// Elevated: popovers, modals, selected states
-    static let backgroundElevated = Color(red: 0.12, green: 0.13, blue: 0.15)
+    static let backgroundElevated = Color(
+        light: Color(white: 0.90),
+        dark: Color(red: 0.12, green: 0.13, blue: 0.15)
+    )
 
     // MARK: - Safety Indicators (Vibrant, Distinct)
-    /// System/safe processes: bright cyan-teal
-    static let safetySystem = Color(red: 0.20, green: 0.85, blue: 0.70)
+    static let safetySystem = Color(red: 0.15, green: 0.70, blue: 0.55)
 
-    /// User processes: vivid amber-orange
-    static let safetyUser = Color(red: 1.0, green: 0.65, blue: 0.20)
+    static let safetyUser = Color(red: 0.85, green: 0.55, blue: 0.15)
 
-    /// Unknown/suspicious: sharp crimson-red
-    static let safetyUnknown = Color(red: 1.0, green: 0.35, blue: 0.35)
+    static let safetyUnknown = Color(red: 0.85, green: 0.25, blue: 0.25)
 
     // MARK: - Text
-    static let textPrimary = Color(white: 0.92)
-    static let textSecondary = Color(white: 0.60)
-    static let textTertiary = Color(white: 0.42)
+    static let textPrimary = Color(
+        light: Color(white: 0.10),
+        dark: Color(white: 0.92)
+    )
 
-    // MARK: - Borders (Subtle, consistent)
-    static let borderSubtle = Color(white: 0.15)
-    static let borderDefault = Color(white: 0.22)
+    static let textSecondary = Color(
+        light: Color(white: 0.40),
+        dark: Color(white: 0.60)
+    )
 
-    // MARK: - Status (Unified with safety palette)
+    static let textTertiary = Color(
+        light: Color(white: 0.55),
+        dark: Color(white: 0.42)
+    )
+
+    // MARK: - Borders
+    static let borderSubtle = Color(
+        light: Color(white: 0.85),
+        dark: Color(white: 0.15)
+    )
+
+    static let borderDefault = Color(
+        light: Color(white: 0.78),
+        dark: Color(white: 0.22)
+    )
+
+    // MARK: - Status
     static let statusSuccess = safetySystem
     static let statusWarning = safetyUser
     static let statusCritical = safetyUnknown
@@ -72,7 +100,7 @@ struct LucidTheme {
     static let cornerRadiusM: CGFloat = 8
     static let cornerRadiusL: CGFloat = 12
 
-    // MARK: - Legacy Aliases (for backward compatibility during transition)
+    // MARK: - Legacy Aliases
     static let accentOrange = accentPrimary
     static let accentOrangeLight = accentHover
     static let backgroundDark = backgroundBase
@@ -84,4 +112,16 @@ struct LucidTheme {
     static let metricMemory = accentPrimary.opacity(0.8)
     static let metricProcesses = accentPrimary.opacity(0.6)
     static let metricDisk = accentPrimary.opacity(0.4)
+}
+
+extension Color {
+    init(light: Color, dark: Color) {
+        let nsColor = NSColor(name: nil) { appearance in
+            if appearance.name == .darkAqua {
+                return NSColor(dark)
+            }
+            return NSColor(light)
+        }
+        self.init(nsColor)
+    }
 }

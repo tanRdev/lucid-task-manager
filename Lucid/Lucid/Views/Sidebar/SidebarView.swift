@@ -90,7 +90,6 @@ struct SidebarView: View {
                             ForEach(monitor.activePorts, id: \.self) { port in
                                 PortFilterRow(
                                     port: port,
-                                    processCount: monitor.processes.filter { $0.ports.contains(port) }.count,
                                     isActive: monitor.selectedFilter == .port(port),
                                     onSelect: { monitor.selectedFilter = .port(port) },
                                     onKill: { portToKill = port }

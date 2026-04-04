@@ -2,7 +2,6 @@ import SwiftUI
 
 struct PortFilterRow: View {
     let port: UInt16
-    let processCount: Int
     let isActive: Bool
     let onSelect: () -> Void
     let onKill: () -> Void
@@ -11,6 +10,10 @@ struct PortFilterRow: View {
     var body: some View {
         Button(action: onSelect) {
             HStack(spacing: 8) {
+                Image(systemName: "network")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+
                 Text(":\(port)")
                     .font(.system(.body, design: .monospaced))
 
@@ -18,17 +21,17 @@ struct PortFilterRow: View {
 
                 if isHovering {
                     Button(action: onKill) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 10, weight: .medium))
+                        Text("KILL")
+                            .font(.system(size: 9, weight: .bold, design: .monospaced))
                             .foregroundStyle(LucidTheme.safetyUnknown)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(LucidTheme.safetyUnknown.opacity(0.15))
+                            .clipShape(Capsule())
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Kill all processes on port \(port)")
                 }
-
-                Text("\(processCount)")
-                    .font(.system(.caption, design: .monospaced))
-                    .foregroundStyle(.secondary)
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 5)

@@ -2,36 +2,35 @@ import SwiftUI
 
 struct LucidTheme {
 
-    // MARK: - Accent (Single, Muted)
-    /// Primary accent: muted slate with subtle warmth
-    /// Oklch-inspired: ~65% lightness, low chroma, cool hue
-    static let accentPrimary = Color(red: 0.55, green: 0.62, blue: 0.70)
+    // MARK: - Accent (Vibrant, Cool)
+    /// Primary accent: vibrant electric blue
+    static let accentPrimary = Color(red: 0.35, green: 0.65, blue: 1.0)
 
     /// Accent hover/pressed state: slightly lighter
-    static let accentHover = Color(red: 0.62, green: 0.68, blue: 0.75)
+    static let accentHover = Color(red: 0.50, green: 0.75, blue: 1.0)
 
     /// Accent muted: for secondary indicators
-    static let accentMuted = Color(red: 0.40, green: 0.45, blue: 0.52)
+    static let accentMuted = Color(red: 0.25, green: 0.45, blue: 0.75)
 
-    // MARK: - Backgrounds (3 Steps, Minimal Contrast)
-    /// Base canvas: deep neutral dark
-    static let backgroundBase = Color(red: 0.08, green: 0.08, blue: 0.09)
+    // MARK: - Backgrounds (Deeper, Neutral Dark)
+    /// Base canvas: rich near-black with cool undertone
+    static let backgroundBase = Color(red: 0.05, green: 0.05, blue: 0.06)
 
     /// Surface: cards, panels, sections
-    static let backgroundSurface = Color(red: 0.12, green: 0.12, blue: 0.13)
+    static let backgroundSurface = Color(red: 0.08, green: 0.09, blue: 0.10)
 
     /// Elevated: popovers, modals, selected states
-    static let backgroundElevated = Color(red: 0.16, green: 0.16, blue: 0.18)
+    static let backgroundElevated = Color(red: 0.12, green: 0.13, blue: 0.15)
 
-    // MARK: - Safety Indicators (Muted, Cohesive)
-    /// System/safe processes: muted teal (professional, non-alarming)
-    static let safetySystem = Color(red: 0.45, green: 0.60, blue: 0.55)
+    // MARK: - Safety Indicators (Vibrant, Distinct)
+    /// System/safe processes: bright cyan-teal
+    static let safetySystem = Color(red: 0.20, green: 0.85, blue: 0.70)
 
-    /// User processes: warm amber (distinguishable, earthy)
-    static let safetyUser = Color(red: 0.70, green: 0.55, blue: 0.35)
+    /// User processes: vivid amber-orange
+    static let safetyUser = Color(red: 1.0, green: 0.65, blue: 0.20)
 
-    /// Unknown/suspicious: muted rose (attention without panic)
-    static let safetyUnknown = Color(red: 0.75, green: 0.45, blue: 0.45)
+    /// Unknown/suspicious: sharp crimson-red
+    static let safetyUnknown = Color(red: 1.0, green: 0.35, blue: 0.35)
 
     // MARK: - Text
     static let textPrimary = Color(white: 0.92)

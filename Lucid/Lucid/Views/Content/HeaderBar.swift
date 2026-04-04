@@ -4,7 +4,6 @@ struct HeaderBar: View {
     let processCount: Int
     @Binding var searchText: String
     @Binding var selectedFilter: FilterCategory
-    @State private var showSettings = false
 
     var body: some View {
         HStack(spacing: 16) {
@@ -19,14 +18,6 @@ struct HeaderBar: View {
             }
 
             Spacer()
-
-            Button(action: { showSettings = true }) {
-                Image(systemName: "gearshape")
-                    .font(.system(size: 14))
-                    .foregroundStyle(.secondary)
-            }
-            .buttonStyle(.plain)
-            .help("Settings")
 
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
@@ -54,8 +45,5 @@ struct HeaderBar: View {
         .padding(.horizontal, 16)
         .padding(.top, 16)
         .padding(.bottom, 10)
-        .sheet(isPresented: $showSettings) {
-            SettingsSheet()
-        }
     }
 }

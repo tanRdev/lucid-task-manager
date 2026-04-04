@@ -16,6 +16,11 @@ struct LucidApp: App {
                 }
         }
         .windowStyle(.hiddenTitleBar)
+        
+        Settings {
+            SettingsView()
+                .environment(monitor)
+        }
     }
 
     private func setupLifecycleObservers() {

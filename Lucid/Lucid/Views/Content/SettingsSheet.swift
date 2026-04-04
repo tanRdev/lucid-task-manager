@@ -1,7 +1,7 @@
 import SwiftUI
 import AppKit
 
-struct SettingsSheet: View {
+struct SettingsView: View {
     @AppStorage("appTheme") private var appTheme: String = "system"
     @Environment(\.dismiss) private var dismiss
 

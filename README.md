@@ -77,9 +77,17 @@ Or open `Lucid/Package.swift` in Xcode and run the app there.
 
 macOS may display a message that the app cannot be verified. To open it:
 
+**Option 1: Right-click**
+
 1. **Right-click** (or Control-click) Lucid.app in Finder.
 2. Select **Open** from the context menu.
 3. Click **Open** in the dialog that appears.
+
+**Option 2: Terminal**
+
+```bash
+xattr -d com.apple.quarantine /Applications/Lucid.app
+```
 
 You only need to do this once. After that, Lucid opens normally.
 

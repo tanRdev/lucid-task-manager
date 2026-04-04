@@ -146,9 +146,24 @@ struct SidebarView: View {
     // MARK: - Metrics Row (compact inline display)
     private var metricsRow: some View {
         HStack(spacing: 16) {
-            MetricItem(label: "CPU", value: String(format: "%.1f%%", monitor.stats.cpuUsage))
-            MetricItem(label: "MEM", value: String(format: "%.1f%%", monitor.stats.memoryUsage))
-            MetricItem(label: "PROC", value: "\(monitor.filterCounts.total)")
+            MetricItem(
+                label: "CPU",
+                value: String(format: "%.1f%%", monitor.stats.cpuUsage),
+                threshold: 80.0,
+                currentValue: monitor.stats.cpuUsage
+            )
+            MetricItem(
+                label: "MEM",
+                value: String(format: "%.1f%%", monitor.stats.memoryUsage),
+                threshold: 80.0,
+                currentValue: monitor.stats.memoryUsage
+            )
+            MetricItem(
+                label: "PROC",
+                value: "\(monitor.filterCounts.total)",
+                threshold: 500,
+                currentValue: Double(monitor.filterCounts.total)
+            )
         }
     }
 
@@ -184,6 +199,17 @@ struct SidebarView: View {
 struct MetricItem: View {
     let label: String
     let value: String
+    let threshold: Double
+    let currentValue: Double
+
+    private var statusColor: Color {
+        if currentValue >= threshold {
+            return LucidTheme.statusCritical
+        } else if currentValue >= threshold * 0.7 {
+            return LucidTheme.statusWarning
+        }
+        return LucidTheme.textPrimary
+    }
 
     var body: some View {
         HStack(spacing: 4) {
@@ -192,7 +218,7 @@ struct MetricItem: View {
                 .foregroundStyle(.secondary)
             Text(value)
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
-                .foregroundStyle(.primary)
+                .foregroundStyle(statusColor)
         }
     }
 }

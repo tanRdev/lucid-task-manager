@@ -111,6 +111,7 @@ struct DetailView: View {
                 selection: $selection,
                 sortOrder: $sortOrder
             )
+            .accentColor(.primary)
             .contextMenu(forSelectionType: LucidProcess.ID.self) { selectedIDs in
                 contextMenuContent(for: selectedIDs)
             }

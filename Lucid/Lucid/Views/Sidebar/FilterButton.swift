@@ -27,7 +27,7 @@ struct FilterButton: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
             .contentShape(Rectangle())
-            .background(isActive ? Color(NSColor.selectedControlColor) : Color.clear)
+            .background(isActive ? Color(NSColor.selectedContentBackgroundColor) : Color.clear)
             .cornerRadius(6)
         }
         .buttonStyle(.plain)

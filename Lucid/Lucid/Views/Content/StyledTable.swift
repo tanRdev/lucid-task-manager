@@ -58,58 +58,7 @@ struct StyledTable: View {
             }
         }
         .tableStyle(.inset(alternatesRowBackgrounds: false))
-        .onAppear {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                styleAllTableViews()
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                styleAllTableViews()
-            }
-        }
-        .onChange(of: processes.count) { _, _ in
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                styleAllTableViews()
-            }
-        }
-    }
-
-    private func styleAllTableViews() {
-        guard let app = NSApplication.shared.mainWindow else { return }
-        guard let contentView = app.contentView else { return }
-
-        func findTableView(in view: NSView) -> NSTableView? {
-            if let tableView = view as? NSTableView {
-                return tableView
-            }
-            for subview in view.subviews {
-                if let found = findTableView(in: subview) {
-                    return found
-                }
-            }
-            return nil
-        }
-
-        func findScrollView(in view: NSView) -> NSScrollView? {
-            if let scrollView = view as? NSScrollView {
-                return scrollView
-            }
-            for subview in view.subviews {
-                if let found = findScrollView(in: subview) {
-                    return found
-                }
-            }
-            return nil
-        }
-
-        if let tableView = findTableView(in: contentView) {
-            tableView.backgroundColor = NSColor(LucidTheme.backgroundBase)
-            tableView.gridStyleMask = []
-            tableView.headerView?.wantsLayer = true
-        }
-
-        if let scrollView = findScrollView(in: contentView) {
-            scrollView.backgroundColor = NSColor(LucidTheme.backgroundBase)
-            scrollView.drawsBackground = true
-        }
+        .scrollContentBackground(.hidden)
+        .background(LucidTheme.backgroundBase)
     }
 }

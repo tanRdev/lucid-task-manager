@@ -12,6 +12,7 @@
   <a href="https://www.apple.com/macos"><img src="https://img.shields.io/badge/macOS-14+-000000?style=flat-square&logo=apple&logoColor=white" alt="macOS"></a>
   <a href="https://github.com/tanRdev/lucid-task-manager/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/tanRdev/lucid-task-manager/ci.yml?branch=master&style=flat-square&label=CI" alt="CI"></a>
   <a href="https://github.com/tanRdev/lucid-task-manager/releases"><img src="https://img.shields.io/github/v/release/tanRdev/lucid-task-manager?style=flat-square" alt="Release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="License"></a>
 </p>
 
 <p><a href="#quick-start">Quick Start</a> · <a href="#installation">Installation</a> · <a href="#usage">Usage</a> · <a href="#architecture">Architecture</a> · <a href="#development">Development</a> · <a href="#resources">Resources</a></p>
@@ -173,11 +174,41 @@ The repository's CI workflow is configured to run:
 - `swift test`
 - `./build-app.sh debug`
 
+## Contributing
+
+Contributions are welcome. Lucid is open source under the [MIT License](LICENSE).
+
+### Ways to Contribute
+
+- **Report bugs** — [Open an issue](https://github.com/tanRdev/lucid-task-manager/issues) with steps to reproduce
+- **Suggest features** — Describe the problem you're solving before proposing solutions
+- **Improve process mappings** — Add or refine human-readable descriptions in `ProcessDictionary.swift`
+- **Submit pull requests** — Fork the repo, branch off `main`, and open a PR with a clear description
+
+### Development Setup
+
+```bash
+git clone https://github.com/tanRdev/lucid-task-manager.git
+cd lucid-task-manager/Lucid
+make test
+```
+
+### Code Standards
+
+- Follow existing Swift conventions and formatting
+- Add tests for new functionality
+- Keep commits focused and descriptive
+- Run `make test` before opening a PR
+
 ## Resources
 
 - [Releases](https://github.com/tanRdev/lucid-task-manager/releases)
 - [CI Workflow](.github/workflows/ci.yml)
 - [Swift Package Manifest](Lucid/Package.swift)
+
+## License
+
+Lucid is licensed under the MIT License. See the [`LICENSE`](LICENSE) file for details.
 
 ## Getting Help
 

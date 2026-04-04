@@ -52,7 +52,8 @@ struct HeaderBar: View {
             .frame(maxWidth: 220)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.top, 16)
+        .padding(.bottom, 10)
         .sheet(isPresented: $showSettings) {
             SettingsSheet()
         }

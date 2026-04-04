@@ -26,8 +26,9 @@ struct SidebarView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 16)
 
-            Divider()
-                .background(LucidTheme.divider)
+            Rectangle()
+                .fill(LucidTheme.divider)
+                .frame(height: 1)
 
             // Filters Section
             VStack(alignment: .leading, spacing: 0) {
@@ -104,8 +105,9 @@ struct SidebarView: View {
 
             Spacer()
 
-            Divider()
-                .background(LucidTheme.divider)
+            Rectangle()
+                .fill(LucidTheme.divider)
+                .frame(height: 1)
 
             // Footer - clean minimal row
             HStack(spacing: 10) {

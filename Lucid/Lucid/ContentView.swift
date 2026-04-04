@@ -19,12 +19,14 @@ struct ContentView: View {
                 .frame(width: 240)
                 .background(LucidTheme.backgroundBase)
 
-            // Single divider as the only separator
-            Divider()
-                .background(LucidTheme.divider)
+            // Single solid line separator (no gradient/shadow effects)
+            Rectangle()
+                .fill(LucidTheme.divider)
+                .frame(width: 1)
 
             // Detail view fills remaining space
             DetailView()
+                .ignoresSafeArea(.container, edges: .top)
         }
         .preferredColorScheme(colorScheme)
     }

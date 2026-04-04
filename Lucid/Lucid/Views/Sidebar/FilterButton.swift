@@ -9,37 +9,26 @@ struct FilterButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
                 Image(systemName: icon)
-                    .frame(width: 20)
+                    .font(.system(size: 14))
+                    .foregroundStyle(isActive ? .primary : .secondary)
+                    .frame(width: 18)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(label)
-                        .font(.system(.body, design: .default))
-                    Text("\(count) processes")
-                        .font(.system(.caption, design: .default))
-                        .foregroundStyle(.secondary)
-                }
+                Text(label)
+                    .font(.system(.body, design: .default))
 
                 Spacer()
 
                 Text("\(count)")
-                    .font(.system(.body, design: .monospaced))
-                    .fontWeight(.semibold)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(LucidTheme.badgeBackground)
-                    .cornerRadius(4)
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.secondary)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
             .contentShape(Rectangle())
-            .background(
-                isActive ?
-                LucidTheme.borderPrimary :
-                Color.clear
-            )
-            .cornerRadius(8)
+            .background(isActive ? Color(NSColor.selectedControlColor) : Color.clear)
+            .cornerRadius(6)
         }
         .buttonStyle(.plain)
     }

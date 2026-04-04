@@ -1,103 +1,94 @@
 import SwiftUI
 
+// MARK: - Flat Surface Modifiers (Glassmorphism removed for minimal aesthetic)
+
 extension View {
+    /// Flat surface for small elements (replaces glass)
+    func lucidSurface() -> some View {
+        modifier(LucidSurfaceModifier())
+    }
+
+    /// Flat container for larger sections
+    func lucidSurfaceContainer() -> some View {
+        modifier(LucidSurfaceContainerModifier())
+    }
+
+    /// Flat button style
+    func lucidFlatButton() -> some View {
+        modifier(LucidFlatButtonModifier())
+    }
+
+    // Legacy aliases - redirect to flat surfaces
+    @available(*, deprecated, renamed: "lucidSurface")
     func lucidGlass() -> some View {
-        modifier(LucidGlassModifier())
+        lucidSurface()
     }
 
+    @available(*, deprecated, renamed: "lucidSurfaceContainer")
     func lucidGlassContainer() -> some View {
-        modifier(LucidGlassContainerModifier())
+        lucidSurfaceContainer()
     }
 
+    @available(*, deprecated, renamed: "lucidFlatButton")
     func lucidGlassButton() -> some View {
-        modifier(LucidGlassButtonModifier())
+        lucidFlatButton()
     }
 }
 
-// MARK: - LucidGlassModifier
-struct LucidGlassModifier: ViewModifier {
+// MARK: - LucidSurfaceModifier
+struct LucidSurfaceModifier: ViewModifier {
     func body(content: Content) -> some View {
-        if #available(macOS 14, *) {
-            content
-                .background(.ultraThinMaterial)
-                .cornerRadius(LucidTheme.cornerRadiusM)
-        } else {
-            content
-                .background(LucidTheme.backgroundTertiary)
-                .cornerRadius(LucidTheme.cornerRadiusM)
-        }
+        content
+            .background(LucidTheme.backgroundSurface)
+            .cornerRadius(LucidTheme.cornerRadiusM)
     }
 }
 
-// MARK: - LucidGlassContainerModifier
-struct LucidGlassContainerModifier: ViewModifier {
+// MARK: - LucidSurfaceContainerModifier
+struct LucidSurfaceContainerModifier: ViewModifier {
     func body(content: Content) -> some View {
-        if #available(macOS 14, *) {
-            content
-                .background(.ultraThinMaterial)
-                .cornerRadius(LucidTheme.cornerRadiusL)
-        } else {
-            content
-                .background(LucidTheme.backgroundSecondary)
-                .cornerRadius(LucidTheme.cornerRadiusL)
-        }
+        content
+            .background(LucidTheme.backgroundSurface)
+            .cornerRadius(LucidTheme.cornerRadiusL)
     }
 }
 
-// MARK: - LucidGlassButtonModifier
-struct LucidGlassButtonModifier: ViewModifier {
+// MARK: - LucidFlatButtonModifier
+struct LucidFlatButtonModifier: ViewModifier {
     @State private var isHovered = false
 
     func body(content: Content) -> some View {
-        if #available(macOS 14, *) {
-            content
-                .padding(.horizontal, LucidTheme.spacingL)
-                .padding(.vertical, LucidTheme.spacingS)
-                .background(.ultraThinMaterial)
-                .cornerRadius(LucidTheme.cornerRadiusS)
-                .onHover { hovering in
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        isHovered = hovering
-                    }
-                }
-                .scaleEffect(isHovered ? 1.02 : 1.0)
-        } else {
-            content
-                .padding(.horizontal, LucidTheme.spacingL)
-                .padding(.vertical, LucidTheme.spacingS)
-                .background(LucidTheme.backgroundTertiary)
-                .cornerRadius(LucidTheme.cornerRadiusS)
-        }
+        content
+            .padding(.horizontal, LucidTheme.spacingL)
+            .padding(.vertical, LucidTheme.spacingS)
+            .background(isHovered ? LucidTheme.backgroundElevated : LucidTheme.backgroundSurface)
+            .cornerRadius(LucidTheme.cornerRadiusS)
+            .onHover { hovering in
+                isHovered = hovering
+            }
     }
 }
 
-// MARK: - Glass Effect Badge
-struct GlassEffectBadge: ViewModifier {
+// MARK: - Subtle Badge
+struct SubtleBadgeModifier: ViewModifier {
     let color: Color
 
     func body(content: Content) -> some View {
-        if #available(macOS 14, *) {
-            content
-                .padding(.horizontal, LucidTheme.spacingM)
-                .padding(.vertical, LucidTheme.spacingXS)
-                .background(.ultraThinMaterial)
-                .cornerRadius(LucidTheme.cornerRadiusS)
-                .overlay(
-                    RoundedRectangle(cornerRadius: LucidTheme.cornerRadiusS)
-                        .stroke(color.opacity(0.3), lineWidth: 1)
-                )
-        } else {
-            content
-                .padding(.horizontal, LucidTheme.spacingM)
-                .padding(.vertical, LucidTheme.spacingXS)
-                .background(LucidTheme.backgroundTertiary)
-                .cornerRadius(LucidTheme.cornerRadiusS)
-        }
+        content
+            .padding(.horizontal, LucidTheme.spacingM)
+            .padding(.vertical, LucidTheme.spacingXS)
+            .background(color.opacity(0.1))
+            .cornerRadius(LucidTheme.cornerRadiusS)
     }
 }
 
 extension View {
+    func subtleBadge(color: Color) -> some View {
+        modifier(SubtleBadgeModifier(color: color))
+    }
+
+    @available(*, deprecated, renamed: "subtleBadge")
     func glassEffectBadge(color: Color) -> some View {
-        modifier(GlassEffectBadge(color: color))
+        subtleBadge(color: color)
     }
 }

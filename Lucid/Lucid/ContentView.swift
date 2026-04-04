@@ -159,7 +159,7 @@ struct DetailView: View {
                 killDialogMessage(for: process)
             }
         }
-        .background(LucidTheme.backgroundDark)
+        .background(LucidTheme.backgroundBase)
         .toolbar(.hidden)
         .alert("Kill Failed", isPresented: killErrorBinding) {
             Button("OK") { killError = nil }

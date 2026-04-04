@@ -20,19 +20,25 @@ struct SidebarView: View {
     }
 
     var body: some View {
-        VStack(spacing: 16) {
-            // Metrics Row
-            MetricsRowView()
+        VStack(alignment: .leading, spacing: 0) {
+            // Metrics Row - compact horizontal display
+            metricsRow
+                .padding(.horizontal, 16)
+                .padding(.vertical, 16)
 
             Divider()
+                .background(LucidTheme.divider)
 
             // Filters Section
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Filters")
-                    .font(.headline)
-                    .padding(.horizontal)
+            VStack(alignment: .leading, spacing: 0) {
+                Text("FILTERS")
+                    .font(.system(size: 10, weight: .semibold, design: .default))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+                    .padding(.bottom, 8)
 
-                VStack(spacing: 8) {
+                VStack(spacing: 0) {
                     FilterButton(
                         label: "All Processes",
                         icon: "square.grid.2x2",
@@ -65,20 +71,21 @@ struct SidebarView: View {
                         action: { monitor.selectedFilter = .unknown }
                     )
                 }
-                .padding(.horizontal)
+                .padding(.horizontal, 12)
             }
 
             // Active Ports Section
             if !monitor.activePorts.isEmpty {
-                Divider()
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Active Ports")
-                        .font(.headline)
-                        .padding(.horizontal)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("PORTS")
+                        .font(.system(size: 10, weight: .semibold, design: .default))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 20)
+                        .padding(.bottom, 8)
 
                     ScrollView {
-                        VStack(spacing: 4) {
+                        VStack(spacing: 0) {
                             ForEach(monitor.activePorts, id: \.self) { port in
                                 PortFilterRow(
                                     port: port,
@@ -89,43 +96,40 @@ struct SidebarView: View {
                                 )
                             }
                         }
-                        .padding(.horizontal)
+                        .padding(.horizontal, 12)
                     }
-                    .frame(maxHeight: 200)
+                    .frame(maxHeight: 160)
                 }
             }
 
             Spacer()
 
-            // Footer
-            VStack(alignment: .leading, spacing: 8) {
-                Divider()
-                HStack(spacing: 8) {
-                    if monitor.isRunning {
-                        PulsingStatusDot()
-                    } else {
-                        Circle()
-                            .fill(Color.gray)
-                            .frame(width: 8, height: 8)
-                    }
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(monitor.isRunning ? "Monitoring" : "Idle")
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(monitor.isRunning ? Color.green : .secondary)
-                        Text(systemInfoString)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                    }
-                    Spacer()
+            Divider()
+                .background(LucidTheme.divider)
+
+            // Footer - clean minimal row
+            HStack(spacing: 10) {
+                if monitor.isRunning {
+                    PulsingStatusDot()
+                } else {
+                    Circle()
+                        .fill(Color.gray)
+                        .frame(width: 6, height: 6)
                 }
-                .padding(.horizontal)
-                .padding(.bottom, 8)
+
+                Text(monitor.isRunning ? "Live" : "Paused")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(monitor.isRunning ? LucidTheme.statusSuccess : .secondary)
+
+                Spacer()
+
+                Text(systemInfoString)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
         }
-        .padding(.vertical, 16)
-        .background(LucidTheme.backgroundSecondary)
         .confirmationDialog(
             "Kill Processes",
             isPresented: portKillBinding,
@@ -139,6 +143,15 @@ struct SidebarView: View {
             Button("OK") { killError = nil }
         } message: {
             Text(killError ?? "")
+        }
+    }
+
+    // MARK: - Metrics Row (compact inline display)
+    private var metricsRow: some View {
+        HStack(spacing: 16) {
+            MetricItem(label: "CPU", value: String(format: "%.1f%%", monitor.stats.cpuUsage))
+            MetricItem(label: "MEM", value: String(format: "%.1f%%", monitor.stats.memoryUsage))
+            MetricItem(label: "PROC", value: "\(monitor.filterCounts.total)")
         }
     }
 
@@ -163,10 +176,26 @@ struct SidebarView: View {
 
     private var systemInfoString: String {
         let version = ProcessInfo.processInfo.operatingSystemVersion
-        let osVersion = "macOS \(version.majorVersion).\(version.minorVersion).\(version.patchVersion)"
         let cpuCores = ProcessInfo.processInfo.activeProcessorCount
         let totalRAM = ProcessInfo.processInfo.physicalMemory
         let ramGB = String(format: "%.0f", Double(totalRAM) / (1024 * 1024 * 1024))
-        return "\(osVersion) \u{2022} \(cpuCores) cores \u{2022} \(ramGB) GB RAM"
+        return "\(version.majorVersion).\(version.minorVersion) • \(cpuCores) cores • \(ramGB) GB"
+    }
+}
+
+// MARK: - Metric Item (compact inline metric)
+struct MetricItem: View {
+    let label: String
+    let value: String
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(label)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                .foregroundStyle(.primary)
+        }
     }
 }

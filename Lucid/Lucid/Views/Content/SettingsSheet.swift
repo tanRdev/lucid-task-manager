@@ -55,8 +55,8 @@ struct SettingsSheet: View {
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
-                        .background(LucidTheme.borderPrimary)
-                        .cornerRadius(8)
+                        .background(LucidTheme.backgroundSurface)
+                        .cornerRadius(6)
                     }
                     .buttonStyle(.plain)
                 }
@@ -77,8 +77,8 @@ struct SettingsSheet: View {
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
-                        .background(LucidTheme.borderPrimary)
-                        .cornerRadius(8)
+                        .background(LucidTheme.backgroundSurface)
+                        .cornerRadius(6)
                     }
                     .buttonStyle(.plain)
                 }

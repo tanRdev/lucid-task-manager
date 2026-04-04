@@ -8,32 +8,24 @@ struct MetricCardView: View {
     let history: [Double]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(color)
-                    .frame(width: 14, height: 14)
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(color)
+                .frame(width: 12)
 
-                Text(label)
-                    .font(.system(.caption2, design: .default))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
 
-                Spacer(minLength: 0)
+            Spacer()
 
-                Text(value)
-                    .font(.system(.caption, design: .monospaced))
-                    .fontWeight(.semibold)
-                    .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: true)
-            }
+            Text(value)
+                .font(.system(.caption, design: .monospaced))
+                .fontWeight(.medium)
         }
-        .padding(8)
-        .background(LucidTheme.backgroundTertiary)
-        .cornerRadius(6)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
         .help("\(label): \(value)")
     }
 }

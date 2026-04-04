@@ -1,30 +1,53 @@
 import SwiftUI
 
 struct LucidTheme {
-    // MARK: - Primary Colors
-    static let accentOrange = Color(red: 1.0, green: 0.35, blue: 0.0) // #FF5C00
-    static let accentOrangeLight = Color(red: 1.0, green: 0.5, blue: 0.2)
 
-    // MARK: - Background Colors
-    static let backgroundDark = Color(red: 0.06, green: 0.06, blue: 0.07) // #0A0A0B
-    static let backgroundSecondary = Color(red: 0.08, green: 0.08, blue: 0.1)
-    static let backgroundTertiary = Color(red: 0.12, green: 0.12, blue: 0.14)
+    // MARK: - Accent (Single, Muted)
+    /// Primary accent: muted slate with subtle warmth
+    /// Oklch-inspired: ~65% lightness, low chroma, cool hue
+    static let accentPrimary = Color(red: 0.55, green: 0.62, blue: 0.70)
 
-    // MARK: - Safety Colors
-    static let safetySystem = Color(red: 0.2, green: 0.8, blue: 0.2) // Green
-    static let safetyUser = Color(red: 0.9, green: 0.7, blue: 0.1) // Yellow/Orange
-    static let safetyUnknown = Color(red: 0.8, green: 0.2, blue: 0.2) // Red
+    /// Accent hover/pressed state: slightly lighter
+    static let accentHover = Color(red: 0.62, green: 0.68, blue: 0.75)
 
-    // MARK: - Text Colors
-    static let textPrimary = Color.white
-    static let textSecondary = Color(white: 0.6)
-    static let textTertiary = Color(white: 0.4)
+    /// Accent muted: for secondary indicators
+    static let accentMuted = Color(red: 0.40, green: 0.45, blue: 0.52)
 
-    // MARK: - Border Colors
-    static let borderPrimary = Color(red: 0.15, green: 0.15, blue: 0.2)
-    static let borderSecondary = Color(red: 0.1, green: 0.1, blue: 0.12)
+    // MARK: - Backgrounds (3 Steps, Minimal Contrast)
+    /// Base canvas: deep neutral dark
+    static let backgroundBase = Color(red: 0.08, green: 0.08, blue: 0.09)
 
-    // MARK: - Font Sizes
+    /// Surface: cards, panels, sections
+    static let backgroundSurface = Color(red: 0.12, green: 0.12, blue: 0.13)
+
+    /// Elevated: popovers, modals, selected states
+    static let backgroundElevated = Color(red: 0.16, green: 0.16, blue: 0.18)
+
+    // MARK: - Safety Indicators (Muted, Cohesive)
+    /// System/safe processes: muted teal (professional, non-alarming)
+    static let safetySystem = Color(red: 0.45, green: 0.60, blue: 0.55)
+
+    /// User processes: warm amber (distinguishable, earthy)
+    static let safetyUser = Color(red: 0.70, green: 0.55, blue: 0.35)
+
+    /// Unknown/suspicious: muted rose (attention without panic)
+    static let safetyUnknown = Color(red: 0.75, green: 0.45, blue: 0.45)
+
+    // MARK: - Text
+    static let textPrimary = Color(white: 0.92)
+    static let textSecondary = Color(white: 0.60)
+    static let textTertiary = Color(white: 0.42)
+
+    // MARK: - Borders (Subtle, consistent)
+    static let borderSubtle = Color(white: 0.15)
+    static let borderDefault = Color(white: 0.22)
+
+    // MARK: - Status (Unified with safety palette)
+    static let statusSuccess = safetySystem
+    static let statusWarning = safetyUser
+    static let statusCritical = safetyUnknown
+
+    // MARK: - Typography Scale
     static let fontSizeXS: CGFloat = 10
     static let fontSizeS: CGFloat = 12
     static let fontSizeBase: CGFloat = 14
@@ -32,7 +55,7 @@ struct LucidTheme {
     static let fontSizeXL: CGFloat = 20
     static let fontSize2XL: CGFloat = 28
 
-    // MARK: - Spacing
+    // MARK: - Spacing Scale
     static let spacing2XS: CGFloat = 2
     static let spacingXS: CGFloat = 4
     static let spacingS: CGFloat = 8
@@ -41,17 +64,25 @@ struct LucidTheme {
     static let spacingXL: CGFloat = 24
     static let spacing2XL: CGFloat = 32
 
-    // MARK: - Badge / Interactive Colors
-    static let badgeBackground = Color(red: 0.2, green: 0.2, blue: 0.25)
-
-    // MARK: - Metric Colors
-    static let metricCPU = Color(red: 1.0, green: 0.35, blue: 0.0)
-    static let metricMemory = Color(red: 0.2, green: 0.8, blue: 0.2)
-    static let metricProcesses = Color(red: 0.2, green: 0.6, blue: 1.0)
-    static let metricDisk = Color(red: 1.0, green: 0.6, blue: 0.2)
+    // MARK: - Component Colors
+    static let badgeBackground = backgroundElevated
+    static let divider = borderSubtle
 
     // MARK: - Corner Radius
     static let cornerRadiusS: CGFloat = 4
     static let cornerRadiusM: CGFloat = 8
     static let cornerRadiusL: CGFloat = 12
+
+    // MARK: - Legacy Aliases (for backward compatibility during transition)
+    static let accentOrange = accentPrimary
+    static let accentOrangeLight = accentHover
+    static let backgroundDark = backgroundBase
+    static let backgroundSecondary = backgroundSurface
+    static let backgroundTertiary = backgroundElevated
+    static let borderPrimary = borderDefault
+    static let borderSecondary = borderSubtle
+    static let metricCPU = accentPrimary
+    static let metricMemory = accentPrimary.opacity(0.8)
+    static let metricProcesses = accentPrimary.opacity(0.6)
+    static let metricDisk = accentPrimary.opacity(0.4)
 }

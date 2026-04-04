@@ -4,8 +4,8 @@ struct MetricsRowView: View {
     @Environment(ProcessMonitor.self) var monitor
 
     private let columns = [
-        GridItem(.flexible(), spacing: 8),
-        GridItem(.flexible(), spacing: 8)
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12)
     ]
 
     var body: some View {
@@ -42,6 +42,5 @@ struct MetricsRowView: View {
                 history: []
             )
         }
-        .padding(.horizontal)
     }
 }

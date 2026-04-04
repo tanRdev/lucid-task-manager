@@ -8,13 +8,13 @@ struct HeaderBar: View {
 
     var body: some View {
         HStack(spacing: 16) {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text("Processes")
-                    .font(.system(.title2, design: .default))
+                    .font(.system(.title3, design: .default))
                     .fontWeight(.semibold)
 
                 Text("\(processCount) items")
-                    .font(.system(.caption, design: .default))
+                    .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
@@ -22,14 +22,15 @@ struct HeaderBar: View {
 
             Button(action: { showSettings = true }) {
                 Image(systemName: "gearshape")
-                    .font(.system(size: 16))
+                    .font(.system(size: 14))
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
             .help("Settings")
 
-            HStack(spacing: 12) {
+            HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
+                    .font(.system(size: 12))
                     .foregroundStyle(.secondary)
 
                 TextField("Search processes...", text: $searchText)
@@ -38,19 +39,20 @@ struct HeaderBar: View {
                 if !searchText.isEmpty {
                     Button(action: { searchText = "" }) {
                         Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 12))
                             .foregroundStyle(.secondary)
                     }
+                    .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(LucidTheme.backgroundTertiary)
-            .cornerRadius(8)
-            .frame(maxWidth: 250)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Color(NSColor.controlBackgroundColor))
+            .cornerRadius(6)
+            .frame(maxWidth: 220)
         }
-        .padding(16)
-        .background(LucidTheme.backgroundSecondary)
-        .border(LucidTheme.backgroundTertiary, width: 1)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
         .sheet(isPresented: $showSettings) {
             SettingsSheet()
         }

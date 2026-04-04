@@ -6,14 +6,12 @@ struct PulsingStatusDot: View {
 
     var body: some View {
         Circle()
-            .fill(Color.green)
-            .frame(width: 8, height: 8)
-            .shadow(color: Color.green.opacity(0.6), radius: isPulsing ? 6 : 2)
-            .scaleEffect(isPulsing ? 1.2 : 0.9)
-            .opacity(isPulsing ? 1.0 : 0.7)
+            .fill(LucidTheme.statusSuccess)
+            .frame(width: 6, height: 6)
+            .opacity(isPulsing ? 1.0 : 0.5)
             .animation(
                 monitor.isRunning
-                    ? .easeInOut(duration: 1.2).repeatForever(autoreverses: true)
+                    ? .easeInOut(duration: 1.5).repeatForever(autoreverses: true)
                     : .default,
                 value: isPulsing
             )

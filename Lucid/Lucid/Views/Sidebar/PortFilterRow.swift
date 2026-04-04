@@ -11,37 +11,30 @@ struct PortFilterRow: View {
     var body: some View {
         Button(action: onSelect) {
             HStack(spacing: 8) {
-                Image(systemName: "network")
-                    .frame(width: 20)
-                    .foregroundStyle(.cyan)
                 Text(":\(port)")
                     .font(.system(.body, design: .monospaced))
+
                 Spacer()
 
-                Button(action: onKill) {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(Color.red.opacity(isHovering ? 0.7 : 0.0001))
-                        .font(.system(size: 12))
+                if isHovering {
+                    Button(action: onKill) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(LucidTheme.safetyUnknown)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Kill all processes on port \(port)")
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Kill all processes on port \(port)")
 
                 Text("\(processCount)")
                     .font(.system(.caption, design: .monospaced))
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(LucidTheme.badgeBackground)
-                    .cornerRadius(4)
+                    .foregroundStyle(.secondary)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
             .contentShape(Rectangle())
-            .background(
-                isActive ?
-                LucidTheme.borderPrimary :
-                Color.clear
-            )
-            .cornerRadius(8)
+            .background(isActive ? Color(NSColor.selectedControlColor) : Color.clear)
+            .cornerRadius(6)
         }
         .buttonStyle(.plain)
         .onHover { hovering in

@@ -6,8 +6,7 @@ struct SafetyDot: View {
     var body: some View {
         Circle()
             .fill(safety.color)
-            .frame(width: 8, height: 8)
-            .shadow(color: safety.color.opacity(0.5), radius: 4, x: 0, y: 0)
+            .frame(width: 6, height: 6)
             .accessibilityLabel("\(safety.label) process")
     }
 }

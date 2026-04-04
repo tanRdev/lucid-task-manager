@@ -13,9 +13,17 @@ struct ContentView: View {
     }
 
     var body: some View {
-        NavigationSplitView {
+        HStack(spacing: 0) {
+            // Sidebar with fixed width
             SidebarView()
-        } detail: {
+                .frame(width: 240)
+                .background(LucidTheme.backgroundBase)
+
+            // Single divider as the only separator
+            Divider()
+                .background(LucidTheme.divider)
+
+            // Detail view fills remaining space
             DetailView()
         }
         .preferredColorScheme(colorScheme)

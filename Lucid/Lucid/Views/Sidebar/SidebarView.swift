@@ -19,17 +19,8 @@ struct SidebarView: View {
         )
     }
 
-    var body: some View {
+        var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Metrics Row - compact horizontal display
-            metricsRow
-                .padding(.horizontal, 16)
-                .padding(.vertical, 16)
-
-            Rectangle()
-                .fill(LucidTheme.divider)
-                .frame(height: 1)
-
             // Filters Section
             VStack(alignment: .leading, spacing: 0) {
                 Text("FILTERS")
@@ -103,6 +94,11 @@ struct SidebarView: View {
             }
 
             Spacer()
+
+            // Metrics Row at bottom
+            metricsRow
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
 
             Rectangle()
                 .fill(LucidTheme.divider)

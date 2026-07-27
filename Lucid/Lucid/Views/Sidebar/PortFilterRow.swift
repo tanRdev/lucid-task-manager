@@ -2,39 +2,39 @@ import SwiftUI
 
 struct PortFilterRow: View {
     let port: UInt16
-    let isActive: Bool
-    let onSelect: () -> Void
     let onKill: () -> Void
 
+    private var portLabel: String { ":\(LucidFormat.port(port))" }
+
     var body: some View {
-        HStack(spacing: 8) {
-            Button(action: onSelect) {
-                HStack(spacing: 8) {
-                    Image(systemName: "network")
-                        .font(.caption)
+        Label {
+            HStack(spacing: 8) {
+                Text(verbatim: portLabel)
+                    .font(.body.monospacedDigit())
+
+                Spacer(minLength: 4)
+
+                Menu {
+                    Button("Kill Listening Processes…", role: .destructive, action: onKill)
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .font(.body)
+                        .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(.secondary)
-
-                    Text(":\(port)")
-                        .font(.body.monospacedDigit())
-
-                    Spacer()
+                        .frame(width: 20, height: 20)
+                        .contentShape(Rectangle())
                 }
-                .contentShape(Rectangle())
+                .buttonStyle(.plain)
+                .menuIndicator(.hidden)
+                .tint(.secondary)
+                .fixedSize()
+                .help("Port actions")
+                .accessibilityLabel("Actions for port \(LucidFormat.port(port))")
             }
-            .buttonStyle(.plain)
-
-            Menu {
-                Button("Filter by Port \(port)", action: onSelect)
-                Button("Kill Listening Processes…", role: .destructive, action: onKill)
-            } label: {
-                Image(systemName: "ellipsis.circle")
-                    .foregroundStyle(.secondary)
-            }
-            .menuStyle(.borderlessButton)
-            .fixedSize()
-            .accessibilityLabel("Actions for port \(port)")
+        } icon: {
+            Image(systemName: "network")
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(.secondary)
         }
-        .padding(.vertical, 2)
-        .listRowBackground(isActive ? Color(NSColor.selectedContentBackgroundColor) : Color.clear)
     }
 }

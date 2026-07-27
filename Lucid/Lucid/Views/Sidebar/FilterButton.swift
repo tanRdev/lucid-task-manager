@@ -8,27 +8,19 @@ struct FilterButton: View {
     var action: () -> Void = {}
 
     var body: some View {
+        // Kept for Dashboard compatibility; sidebar uses native List rows.
         Button(action: action) {
-            HStack(spacing: 10) {
+            Label {
+                HStack {
+                    Text(label)
+                    Spacer()
+                    Text(verbatim: LucidFormat.count(count))
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+            } icon: {
                 Image(systemName: icon)
-                    .font(.system(size: 14))
-                    .foregroundStyle(isActive ? .primary : .secondary)
-                    .frame(width: 18)
-
-                Text(label)
-                    .font(.system(.body, design: .default))
-
-                Spacer()
-
-                Text("\(count)")
-                    .font(.system(.caption, design: .monospaced))
-                    .foregroundStyle(.secondary)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .contentShape(Rectangle())
-            .background(isActive ? Color(NSColor.selectedContentBackgroundColor) : Color.clear)
-            .cornerRadius(6)
         }
         .buttonStyle(.plain)
     }

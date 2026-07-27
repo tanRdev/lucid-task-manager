@@ -38,30 +38,31 @@ enum DarwinProcess {
         return Array(pids.prefix(Int(pidCount)))
     }
 
-    static func getProcessName(pid: pid_t) -> String? {
+    /// Single `proc_pidpath` call — name is the last path component.
+    static func getProcessNameAndPath(pid: pid_t) -> (name: String, path: String)? {
         var buffer = [CChar](repeating: 0, count: Int(4096))
         let ret = proc_pidpath(pid, &buffer, UInt32(buffer.count))
 
-        if ret > 0, let name = String(validatingUTF8: buffer) {
-            return URL(fileURLWithPath: name).lastPathComponent
+        if ret > 0, let path = String(validatingUTF8: buffer), !path.isEmpty {
+            return (URL(fileURLWithPath: path).lastPathComponent, path)
         }
 
         var nameBuffer = [CChar](repeating: 0, count: 16)
-        if proc_name(pid, &nameBuffer, UInt32(nameBuffer.count)) > 0 {
-            return String(validatingUTF8: nameBuffer)
+        if proc_name(pid, &nameBuffer, UInt32(nameBuffer.count)) > 0,
+           let name = String(validatingUTF8: nameBuffer), !name.isEmpty {
+            return (name, "")
         }
 
         return nil
     }
 
-    static func getProcessPath(pid: pid_t) -> String? {
-        var buffer = [CChar](repeating: 0, count: Int(4096))
-        let ret = proc_pidpath(pid, &buffer, UInt32(buffer.count))
+    static func getProcessName(pid: pid_t) -> String? {
+        getProcessNameAndPath(pid: pid)?.name
+    }
 
-        if ret > 0 {
-            return String(validatingUTF8: buffer)
-        }
-        return nil
+    static func getProcessPath(pid: pid_t) -> String? {
+        let path = getProcessNameAndPath(pid: pid)?.path
+        return (path?.isEmpty == false) ? path : nil
     }
 
     static func getProcessInfo(pid: pid_t) -> ProcessSampleInfo? {
@@ -85,7 +86,6 @@ enum DarwinProcess {
         )
     }
 
-    /// Confirms the live process still matches the selected identity (PID + start time + name).
     static func matchesIdentity(_ identity: ProcessIdentity, expectedName: String) -> Bool {
         guard let name = getProcessName(pid: identity.pid), name == expectedName else {
             return false
@@ -93,14 +93,11 @@ enum DarwinProcess {
         guard let info = getProcessInfo(pid: identity.pid) else {
             return false
         }
-        // startTime 0 means we couldn't read BSD info at sample time — fall back to name+pid.
         if identity.startTime == 0 || info.startTime == 0 {
             return true
         }
         return info.startTime == identity.startTime
     }
-
-    // MARK: - Process Control
 
     static func killProcess(pid: pid_t) -> Result<Void, DarwinError> {
         if kill(pid, SIGTERM) == 0 {
@@ -111,9 +108,6 @@ enum DarwinProcess {
         }
     }
 
-    // MARK: - Host memory
-
-    /// Activity Monitor–style memory used: active + wired + compressed pages.
     static func hostMemoryUsedBytes() -> (used: UInt64, total: UInt64)? {
         var stats = vm_statistics64()
         var count = mach_msg_type_number_t(
@@ -137,10 +131,6 @@ enum DarwinProcess {
         return (used, total)
     }
 
-    // MARK: - CPU helpers
-
-    /// Activity Monitor–compatible per-process CPU: one fully busy core == 100%.
-    /// Values may exceed 100% on multi-core machines. Does not divide by core count.
     static func calculateCPUPercentage(
         currentNanos: UInt64,
         previousNanos: UInt64,
@@ -153,7 +143,6 @@ enum DarwinProcess {
         return (deltaNanos / allowedNanos) * 100.0
     }
 
-    /// Whole-machine CPU: sum of per-process core usage divided once by logical core count.
     static func calculateSystemCPUPercentage(
         processCPUPercentages: [Double],
         coreCount: Int

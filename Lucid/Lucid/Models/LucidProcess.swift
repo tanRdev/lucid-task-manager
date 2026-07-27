@@ -62,9 +62,6 @@ struct LucidProcess: Identifiable, Hashable, Comparable, Sendable {
     }
 
     var portsFormatted: String {
-        if ports.isEmpty {
-            return "—"
-        }
-        return ports.map(String.init).joined(separator: ", ")
+        LucidFormat.ports(ports)
     }
 }

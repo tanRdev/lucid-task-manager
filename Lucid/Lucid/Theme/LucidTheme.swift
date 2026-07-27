@@ -35,20 +35,23 @@ struct LucidTheme {
         dark: Color(red: 0.12, green: 0.13, blue: 0.15)
     )
 
-    // MARK: - Origin Indicators (neutral semantic — not "safe/unsafe")
+    // MARK: - Origin Indicators (distinct, not traffic-light "safe/unsafe")
+    /// System — cool slate
     static let originSystem = Color(
-        light: Color(red: 0.35, green: 0.40, blue: 0.48),
-        dark: Color(red: 0.55, green: 0.60, blue: 0.68)
+        light: Color(red: 0.38, green: 0.42, blue: 0.52),
+        dark: Color(red: 0.68, green: 0.72, blue: 0.82)
     )
 
+    /// User — clear azure
     static let originUser = Color(
-        light: Color(red: 0.20, green: 0.45, blue: 0.75),
-        dark: Color(red: 0.45, green: 0.65, blue: 0.90)
+        light: Color(red: 0.10, green: 0.45, blue: 0.82),
+        dark: Color(red: 0.45, green: 0.72, blue: 1.00)
     )
 
+    /// Unknown — warm amber
     static let originUnknown = Color(
-        light: Color(red: 0.55, green: 0.45, blue: 0.25),
-        dark: Color(red: 0.75, green: 0.65, blue: 0.40)
+        light: Color(red: 0.78, green: 0.48, blue: 0.08),
+        dark: Color(red: 1.00, green: 0.74, blue: 0.32)
     )
 
     // Legacy aliases

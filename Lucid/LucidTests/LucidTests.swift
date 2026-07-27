@@ -107,6 +107,8 @@ final class LucidTests: XCTestCase {
     func testLucidProcessPortsFormatted() throws {
         XCTAssertEqual(makeProcess(ports: []).portsFormatted, "—")
         XCTAssertEqual(makeProcess(ports: [80, 443, 8080]).portsFormatted, "80, 443, 8080")
+        XCTAssertEqual(LucidFormat.port(8265), "8265")
+        XCTAssertNotEqual(LucidFormat.port(8265), "8,265")
     }
 
     func testLucidProcessIdentityIncludesStartTime() throws {

@@ -5,7 +5,7 @@ struct ContentView: View {
     @Environment(ProcessMonitor.self) var monitor
     @AppStorage("appTheme") private var appTheme: String = "system"
     @State private var columnVisibility = NavigationSplitViewVisibility.all
-    @State private var inspectorPresented = true
+    @State private var inspectorPresented = false
 
     private var colorScheme: ColorScheme? {
         switch appTheme {
@@ -77,6 +77,8 @@ struct DetailView: View {
     @State private var selection = Set<ProcessIdentity>()
     @State private var killError: String?
     @State private var inspectedProcess: LucidProcess?
+    /// Cached filter/sort output — avoids re-sorting hundreds of rows on every body pass.
+    @State private var displayedProcesses: [LucidProcess] = []
 
     private var killErrorBinding: Binding<Bool> {
         Binding(
@@ -95,61 +97,13 @@ struct DetailView: View {
         )
     }
 
-    var filteredProcesses: [LucidProcess] {
-        var result = monitor.processes
-
-        switch monitor.selectedFilter {
-        case .all:
-            break
-        case .system:
-            result = result.filter { $0.origin == .system }
-        case .user:
-            result = result.filter { $0.origin == .user }
-        case .unknown:
-            result = result.filter { $0.origin == .unknown }
-        case .port(let port):
-            result = result.filter { $0.ports.contains(port) }
-        }
-
-        if !searchText.isEmpty {
-            result = result.filter { process in
-                process.name.localizedCaseInsensitiveContains(searchText) ||
-                process.description.localizedCaseInsensitiveContains(searchText) ||
-                String(process.pid).contains(searchText)
-            }
-        }
-
-        result.sort { lhs, rhs in
-            let comparison: Bool
-            switch sortKey {
-            case .name:
-                comparison = lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
-            case .origin:
-                comparison = lhs.origin.label < rhs.origin.label
-            case .description:
-                comparison = lhs.description.localizedCaseInsensitiveCompare(rhs.description) == .orderedAscending
-            case .cpu:
-                comparison = lhs.cpuUsage < rhs.cpuUsage
-            case .memory:
-                comparison = lhs.memoryBytes < rhs.memoryBytes
-            case .pid:
-                comparison = lhs.pid < rhs.pid
-            case .ports:
-                comparison = (lhs.ports.first ?? 0) < (rhs.ports.first ?? 0)
-            }
-            return sortAscending ? comparison : !comparison
-        }
-
-        return result
-    }
-
     private var selectedProcess: LucidProcess? {
         if let inspected = inspectedProcess,
-           filteredProcesses.contains(where: { $0.identity == inspected.identity }) {
-            return filteredProcesses.first(where: { $0.identity == inspected.identity })
+           let match = displayedProcesses.first(where: { $0.identity == inspected.identity }) {
+            return match
         }
         if let id = selection.first {
-            return filteredProcesses.first(where: { $0.identity == id })
+            return displayedProcesses.first(where: { $0.identity == id })
         }
         return nil
     }
@@ -158,20 +112,18 @@ struct DetailView: View {
         Group {
             if monitor.isLoading && monitor.processes.isEmpty {
                 ContentUnavailableView("Loading processes…", systemImage: "arrow.triangle.2.circlepath")
-            } else if filteredProcesses.isEmpty {
+            } else if displayedProcesses.isEmpty {
                 emptyState
             } else {
                 StyledTable(
-                    processes: filteredProcesses,
-                    selection: $selection,
-                    sortKey: $sortKey,
-                    sortAscending: $sortAscending
+                    processes: displayedProcesses,
+                    selection: $selection
                 )
                 .contextMenu(forSelectionType: ProcessIdentity.self) { selectedIDs in
                     contextMenuContent(for: selectedIDs)
                 } primaryAction: { selectedIDs in
                     if let id = selectedIDs.first,
-                       let process = filteredProcesses.first(where: { $0.identity == id }) {
+                       let process = displayedProcesses.first(where: { $0.identity == id }) {
                         inspectedProcess = process
                         inspectorPresented = true
                     }
@@ -182,8 +134,32 @@ struct DetailView: View {
         .navigationTitle("Processes")
         .navigationSubtitle(subtitle)
         .searchable(text: $searchText, placement: .toolbar, prompt: "Search processes")
+        .onAppear { rebuildDisplayedProcesses() }
+        .onChange(of: monitor.lastUpdated) { _, _ in rebuildDisplayedProcesses() }
+        .onChange(of: monitor.selectedFilter) { _, _ in rebuildDisplayedProcesses() }
+        .onChange(of: searchText) { _, _ in rebuildDisplayedProcesses() }
+        .onChange(of: sortKey) { _, _ in rebuildDisplayedProcesses() }
+        .onChange(of: sortAscending) { _, _ in rebuildDisplayedProcesses() }
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
+                Picker("Sort", selection: $sortKey) {
+                    ForEach(ProcessSortKey.allCases) { key in
+                        Text(key.label).tag(key)
+                    }
+                }
+                .pickerStyle(.menu)
+                .help("Sort processes")
+
+                Button {
+                    sortAscending.toggle()
+                } label: {
+                    Label(
+                        sortAscending ? "Ascending" : "Descending",
+                        systemImage: sortAscending ? "arrow.up" : "arrow.down"
+                    )
+                }
+                .help(sortAscending ? "Sort ascending" : "Sort descending")
+
                 Button {
                     if monitor.isRunning {
                         monitor.stop()
@@ -226,7 +202,7 @@ struct DetailView: View {
         }
         .onChange(of: selection) { _, newValue in
             if let id = newValue.first,
-               let process = filteredProcesses.first(where: { $0.identity == id }) {
+               let process = displayedProcesses.first(where: { $0.identity == id }) {
                 inspectedProcess = process
             }
         }
@@ -246,25 +222,93 @@ struct DetailView: View {
         }
         .overlay(alignment: .bottom) {
             if let error = monitor.lastError {
-                Text(error)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(8)
-                    .background(.ultraThinMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-                    .padding()
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(LucidTheme.statusWarning)
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
+                    Spacer(minLength: 8)
+                    Button {
+                        monitor.lastError = nil
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Dismiss")
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .strokeBorder(LucidTheme.borderSubtle, lineWidth: 0.5)
+                )
+                .padding()
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
     }
 
     private var subtitle: String {
-        var parts = ["\(filteredProcesses.count) shown"]
+        var parts = ["\(LucidFormat.count(displayedProcesses.count)) shown"]
         if let updated = monitor.lastUpdated {
             let formatter = RelativeDateTimeFormatter()
             formatter.unitsStyle = .abbreviated
             parts.append("Updated \(formatter.localizedString(for: updated, relativeTo: Date()))")
         }
         return parts.joined(separator: " · ")
+    }
+
+    private func rebuildDisplayedProcesses() {
+        var result = monitor.processes
+
+        switch monitor.selectedFilter {
+        case .all:
+            break
+        case .system:
+            result = result.filter { $0.origin == .system }
+        case .user:
+            result = result.filter { $0.origin == .user }
+        case .unknown:
+            result = result.filter { $0.origin == .unknown }
+        case .port(let port):
+            result = result.filter { $0.ports.contains(port) }
+        }
+
+        if !searchText.isEmpty {
+            let query = searchText
+            result = result.filter { process in
+                process.name.localizedCaseInsensitiveContains(query) ||
+                process.description.localizedCaseInsensitiveContains(query) ||
+                LucidFormat.pid(process.pid).contains(query)
+            }
+        }
+
+        result.sort { lhs, rhs in
+            let ordered: Bool
+            switch sortKey {
+            case .name:
+                ordered = lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+            case .origin:
+                ordered = lhs.origin.rawValue < rhs.origin.rawValue
+            case .description:
+                ordered = lhs.description.localizedCaseInsensitiveCompare(rhs.description) == .orderedAscending
+            case .cpu:
+                ordered = lhs.cpuUsage < rhs.cpuUsage
+            case .memory:
+                ordered = lhs.memoryBytes < rhs.memoryBytes
+            case .pid:
+                ordered = lhs.pid < rhs.pid
+            case .ports:
+                ordered = (lhs.ports.first ?? 0) < (rhs.ports.first ?? 0)
+            }
+            return sortAscending ? ordered : !ordered
+        }
+
+        displayedProcesses = result
     }
 
     @ViewBuilder
@@ -291,7 +335,7 @@ struct DetailView: View {
             EmptyView()
         } else if selectedIDs.count == 1,
                   let id = selectedIDs.first,
-                  let process = filteredProcesses.first(where: { $0.identity == id }) {
+                  let process = displayedProcesses.first(where: { $0.identity == id }) {
             singleSelectionMenu(for: process)
         } else if selectedIDs.count > 1 {
             multiSelectionMenu(ids: selectedIDs)
@@ -335,7 +379,7 @@ struct DetailView: View {
     }
 
     private func multiSelectionMenu(ids: Set<ProcessIdentity>) -> some View {
-        let targets = filteredProcesses.filter { ids.contains($0.identity) && $0.origin.allowsTermination }
+        let targets = displayedProcesses.filter { ids.contains($0.identity) && $0.origin.allowsTermination }
         return Group {
             if targets.isEmpty {
                 Text("No killable processes in selection")
@@ -343,7 +387,7 @@ struct DetailView: View {
                 Button(role: .destructive) {
                     multiKillTargets = targets
                 } label: {
-                    Label("Kill \(targets.count) Processes", systemImage: "xmark.circle")
+                    Label("Kill \(LucidFormat.count(targets.count)) Processes", systemImage: "xmark.circle")
                 }
             }
         }
@@ -382,9 +426,9 @@ struct DetailView: View {
 
     private func killDialogMessage(for process: LucidProcess) -> some View {
         if killTarget != nil {
-            Text("Terminate \(process.name) (PID \(process.pid))? This cannot be undone.")
+            Text("Terminate \(process.name) (PID \(LucidFormat.pid(process.pid)))? This cannot be undone.")
         } else {
-            Text("Terminate \(multiKillTargets.count) processes? Protected system processes are excluded.")
+            Text("Terminate \(LucidFormat.count(multiKillTargets.count)) processes? Protected system processes are excluded.")
         }
     }
 }
@@ -398,13 +442,35 @@ struct ProcessInspectorView: View {
             if let process {
                 Form {
                     Section("Process") {
-                        LabeledContent("Name", value: process.name)
-                        LabeledContent("PID", value: String(process.pid))
-                        LabeledContent("Origin", value: process.origin.label)
-                        LabeledContent("User ID", value: String(process.userID))
-                        LabeledContent("CPU", value: process.cpuFormatted)
-                        LabeledContent("Memory (RSS)", value: process.memoryFormatted)
-                        LabeledContent("Ports", value: process.portsFormatted)
+                        LabeledContent("Name") {
+                            Text(process.name)
+                                .textSelection(.enabled)
+                        }
+                        LabeledContent("PID") {
+                            Text(verbatim: LucidFormat.pid(process.pid))
+                                .font(.body.monospacedDigit())
+                                .textSelection(.enabled)
+                        }
+                        LabeledContent("Origin") {
+                            OriginTag(origin: process.origin)
+                        }
+                        LabeledContent("User ID") {
+                            Text(verbatim: LucidFormat.userID(process.userID))
+                                .font(.body.monospacedDigit())
+                        }
+                        LabeledContent("CPU") {
+                            Text(verbatim: process.cpuFormatted)
+                                .font(.body.monospacedDigit())
+                        }
+                        LabeledContent("Memory (RSS)") {
+                            Text(verbatim: process.memoryFormatted)
+                                .font(.body.monospacedDigit())
+                        }
+                        LabeledContent("Ports") {
+                            Text(verbatim: process.portsFormatted)
+                                .font(.body.monospacedDigit())
+                                .textSelection(.enabled)
+                        }
                     }
 
                     Section("Description") {

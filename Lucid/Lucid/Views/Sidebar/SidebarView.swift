@@ -19,45 +19,41 @@ struct SidebarView: View {
         )
     }
 
-    var body: some View {
-        List(selection: Binding(
+    private var selection: Binding<FilterCategory?> {
+        Binding(
             get: { monitor.selectedFilter },
-            set: { monitor.selectedFilter = $0 }
-        )) {
+            set: { monitor.selectedFilter = $0 ?? .all }
+        )
+    }
+
+    var body: some View {
+        List(selection: selection) {
             Section("Filters") {
-                FilterButton(
-                    label: "All Processes",
+                filterRow(
+                    title: "All Processes",
                     icon: "square.grid.2x2",
-                    count: monitor.filterCounts.total,
-                    isActive: monitor.selectedFilter == .all,
-                    action: { monitor.selectedFilter = .all }
+                    count: monitor.filterCounts.total
                 )
                 .tag(FilterCategory.all)
 
-                FilterButton(
-                    label: "System",
+                filterRow(
+                    title: "System",
                     icon: "gearshape.fill",
-                    count: monitor.filterCounts.system,
-                    isActive: monitor.selectedFilter == .system,
-                    action: { monitor.selectedFilter = .system }
+                    count: monitor.filterCounts.system
                 )
                 .tag(FilterCategory.system)
 
-                FilterButton(
-                    label: "User",
+                filterRow(
+                    title: "User",
                     icon: "person.fill",
-                    count: monitor.filterCounts.user,
-                    isActive: monitor.selectedFilter == .user,
-                    action: { monitor.selectedFilter = .user }
+                    count: monitor.filterCounts.user
                 )
                 .tag(FilterCategory.user)
 
-                FilterButton(
-                    label: "Unknown",
+                filterRow(
+                    title: "Unknown",
                     icon: "questionmark.circle.fill",
-                    count: monitor.filterCounts.unknown,
-                    isActive: monitor.selectedFilter == .unknown,
-                    action: { monitor.selectedFilter = .unknown }
+                    count: monitor.filterCounts.unknown
                 )
                 .tag(FilterCategory.unknown)
             }
@@ -67,8 +63,6 @@ struct SidebarView: View {
                     ForEach(monitor.activePorts, id: \.self) { port in
                         PortFilterRow(
                             port: port,
-                            isActive: monitor.selectedFilter == .port(port),
-                            onSelect: { monitor.selectedFilter = .port(port) },
                             onKill: { portToKill = port }
                         )
                         .tag(FilterCategory.port(port))
@@ -85,17 +79,20 @@ struct SidebarView: View {
                     PulsingStatusDot()
 
                     Text(statusLabel)
-                        .font(.caption)
+                        .font(.caption.weight(.medium))
                         .foregroundStyle(monitor.isRunning ? LucidTheme.statusSuccess : .secondary)
 
-                    Spacer()
+                    Spacer(minLength: 0)
                 }
 
                 Text(systemInfoString)
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
             }
-            .padding(12)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(.bar)
         }
@@ -108,7 +105,10 @@ struct SidebarView: View {
             if killable.isEmpty {
                 Button("OK", role: .cancel) { portToKill = nil }
             } else {
-                Button("Kill \(killable.count) Process\(killable.count == 1 ? "" : "es")", role: .destructive) {
+                Button(
+                    "Kill \(LucidFormat.count(killable.count)) Process\(killable.count == 1 ? "" : "es")",
+                    role: .destructive
+                ) {
                     if case .failure(let error) = monitor.killProcesses(killable) {
                         killError = error.localizedDescription
                     } else {
@@ -132,6 +132,22 @@ struct SidebarView: View {
         .navigationTitle("Lucid")
     }
 
+    private func filterRow(title: String, icon: String, count: Int) -> some View {
+        Label {
+            HStack(spacing: 8) {
+                Text(title)
+                    .lineLimit(1)
+                Spacer(minLength: 8)
+                Text(verbatim: LucidFormat.count(count))
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+        } icon: {
+            Image(systemName: icon)
+                .symbolRenderingMode(.hierarchical)
+        }
+    }
+
     private var statusLabel: String {
         if monitor.isPausedForInactivity {
             return "Paused while inactive"
@@ -140,7 +156,7 @@ struct SidebarView: View {
     }
 
     private var metricsRow: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 14) {
             MetricItem(
                 label: "CPU",
                 value: String(format: "%.0f%%", monitor.stats.cpuUsage),
@@ -155,10 +171,11 @@ struct SidebarView: View {
             )
             MetricItem(
                 label: "Proc",
-                value: "\(monitor.filterCounts.total)",
+                value: LucidFormat.count(monitor.filterCounts.total),
                 threshold: 500,
                 currentValue: Double(monitor.filterCounts.total)
             )
+            Spacer(minLength: 0)
         }
     }
 
@@ -167,12 +184,14 @@ struct SidebarView: View {
         let protected = monitor.protectedProcesses(onPort: port)
         var lines: [String] = []
         if killable.isEmpty {
-            lines.append("No unprotected processes are listening on port \(port).")
+            lines.append("No unprotected processes are listening on port \(LucidFormat.port(port)).")
         } else {
             lines.append("Will terminate:")
-            lines.append(contentsOf: killable.prefix(8).map { "• \($0.name) (PID \($0.pid))" })
+            lines.append(contentsOf: killable.prefix(8).map {
+                "• \($0.name) (PID \(LucidFormat.pid($0.pid)))"
+            })
             if killable.count > 8 {
-                lines.append("• …and \(killable.count - 8) more")
+                lines.append("• …and \(LucidFormat.count(killable.count - 8)) more")
             }
         }
         if !protected.isEmpty {
@@ -208,11 +227,12 @@ struct MetricItem: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(label)
-                .font(.caption2)
+                .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
-            Text(value)
+            Text(verbatim: value)
                 .font(.caption.monospacedDigit().weight(.medium))
                 .foregroundStyle(statusColor)
         }
+        .accessibilityElement(children: .combine)
     }
 }

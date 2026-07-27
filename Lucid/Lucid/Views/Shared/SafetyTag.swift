@@ -4,16 +4,19 @@ struct OriginTag: View {
     let origin: ProcessOrigin
 
     var body: some View {
-        Text(origin.label)
-            .font(.caption.weight(.medium))
-            .foregroundStyle(origin.color)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(origin.color.opacity(0.12))
-            .clipShape(RoundedRectangle(cornerRadius: 4))
-            .accessibilityLabel("Origin \(origin.label)")
+        HStack(spacing: 4) {
+            Image(systemName: origin.systemImage)
+                .font(.system(size: 9, weight: .semibold))
+            Text(origin.label)
+                .font(.caption.weight(.semibold))
+        }
+        .foregroundStyle(origin.color)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 3)
+        .background(origin.color.opacity(0.16), in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Origin \(origin.label)")
     }
 }
 
-/// Legacy name kept for older call sites.
 typealias SafetyTag = OriginTag

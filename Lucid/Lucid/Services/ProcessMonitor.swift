@@ -1,11 +1,13 @@
 import Foundation
 import AppKit
+import SwiftUI
 import os
 
 /// Immutable snapshot produced by background sampling.
 struct ProcessSnapshot: Sendable {
     let processes: [LucidProcess]
-    let cpuTimes: [ProcessIdentity: UInt64]
+    let filterCounts: ProcessMonitor.FilterCounts
+    let activePorts: [UInt16]
     let sampleInstant: ContinuousClock.Instant
     let portError: String?
 }
@@ -15,11 +17,11 @@ actor ProcessSampler {
     private let portScanner = PortScanner()
     private var previousCPUTimes: [ProcessIdentity: UInt64] = [:]
     private var previousSampleInstant: ContinuousClock.Instant?
+    private var cachedPortMap: [pid_t: [UInt16]] = [:]
+    private var portSampleCounter = 0
 
     func sample(appNameMap: [pid_t: String]) async -> ProcessSnapshot {
         let pids = DarwinProcess.getAllPIDs()
-        let portMap = await portScanner.getListeningPorts()
-        let portError = await portScanner.lastError
         let now = ContinuousClock.now
         let measuredElapsed: Double = {
             guard let previous = previousSampleInstant else { return 2.0 }
@@ -29,79 +31,90 @@ actor ProcessSampler {
             return max(seconds, 0.001)
         }()
 
-        let prevCPUTimes = previousCPUTimes
-        let chunkSize = 50
-        let pidChunks = stride(from: 0, to: pids.count, by: chunkSize).map {
-            Array(pids[$0..<min($0 + chunkSize, pids.count)])
+        // Ports change slowly — refresh every 3rd sample (~6–9s) instead of every tick.
+        portSampleCounter += 1
+        var portError: String?
+        if portSampleCounter == 1 || portSampleCounter % 3 == 0 || cachedPortMap.isEmpty {
+            cachedPortMap = await portScanner.getListeningPorts()
+            portError = await portScanner.lastError
         }
+        let portMap = cachedPortMap
+        let prevCPUTimes = previousCPUTimes
 
+        // Serial scan is faster than TaskGroup for syscall-bound work (less scheduling overhead).
         var newProcesses: [LucidProcess] = []
+        newProcesses.reserveCapacity(pids.count)
         var currentCPUTimes: [ProcessIdentity: UInt64] = [:]
+        currentCPUTimes.reserveCapacity(pids.count)
 
-        await withTaskGroup(of: [(LucidProcess, ProcessIdentity, UInt64?)].self) { group in
-            for chunk in pidChunks {
-                group.addTask {
-                    var results: [(LucidProcess, ProcessIdentity, UInt64?)] = []
-                    for pid in chunk {
-                        guard let name = DarwinProcess.getProcessName(pid: pid) else { continue }
-                        let exePath = DarwinProcess.getProcessPath(pid: pid) ?? ""
-                        let (description, origin) = ProcessDictionary.smartLookup(
-                            name: name,
-                            path: exePath,
-                            nsAppName: appNameMap[pid]
-                        )
+        var systemCount = 0
+        var userCount = 0
+        var unknownCount = 0
+        var portSet = Set<UInt16>()
 
-                        let info = DarwinProcess.getProcessInfo(pid: pid)
-                        let identity = ProcessIdentity(
-                            pid: pid,
-                            startTime: info?.startTime ?? 0
-                        )
+        for pid in pids {
+            guard let (name, exePath) = DarwinProcess.getProcessNameAndPath(pid: pid) else { continue }
 
-                        let cpuUsage: Double
-                        if let info {
-                            let previousNanos = prevCPUTimes[identity] ?? info.cpuNanos
-                            cpuUsage = DarwinProcess.calculateCPUPercentage(
-                                currentNanos: info.cpuNanos,
-                                previousNanos: previousNanos,
-                                elapsedSeconds: measuredElapsed
-                            )
-                        } else {
-                            cpuUsage = 0
-                        }
+            let (description, origin) = ProcessDictionary.smartLookup(
+                name: name,
+                path: exePath,
+                nsAppName: appNameMap[pid]
+            )
 
-                        let process = LucidProcess(
-                            identity: identity,
-                            name: name,
-                            description: description,
-                            cpuUsage: cpuUsage,
-                            memoryBytes: info?.memoryBytes ?? 0,
-                            origin: origin,
-                            exePath: exePath,
-                            ports: portMap[pid] ?? [],
-                            userID: info?.userID ?? 0
-                        )
-                        results.append((process, identity, info?.cpuNanos))
-                    }
-                    return results
-                }
+            let info = DarwinProcess.getProcessInfo(pid: pid)
+            let identity = ProcessIdentity(pid: pid, startTime: info?.startTime ?? 0)
+
+            let cpuUsage: Double
+            if let info {
+                let previousNanos = prevCPUTimes[identity] ?? info.cpuNanos
+                cpuUsage = DarwinProcess.calculateCPUPercentage(
+                    currentNanos: info.cpuNanos,
+                    previousNanos: previousNanos,
+                    elapsedSeconds: measuredElapsed
+                )
+                currentCPUTimes[identity] = info.cpuNanos
+            } else {
+                cpuUsage = 0
             }
 
-            for await chunk in group {
-                for (process, identity, cpuNanos) in chunk {
-                    newProcesses.append(process)
-                    if let nanos = cpuNanos {
-                        currentCPUTimes[identity] = nanos
-                    }
-                }
+            let ports = portMap[pid] ?? []
+            for port in ports { portSet.insert(port) }
+
+            switch origin {
+            case .system: systemCount += 1
+            case .user: userCount += 1
+            case .unknown: unknownCount += 1
             }
+
+            newProcesses.append(
+                LucidProcess(
+                    identity: identity,
+                    name: name,
+                    description: description,
+                    cpuUsage: cpuUsage,
+                    memoryBytes: info?.memoryBytes ?? 0,
+                    origin: origin,
+                    exePath: exePath,
+                    ports: ports,
+                    userID: info?.userID ?? 0
+                )
+            )
         }
 
         previousCPUTimes = currentCPUTimes
         previousSampleInstant = now
 
+        let counts = ProcessMonitor.FilterCounts(
+            total: newProcesses.count,
+            system: systemCount,
+            user: userCount,
+            unknown: unknownCount
+        )
+
         return ProcessSnapshot(
-            processes: newProcesses.sorted(),
-            cpuTimes: currentCPUTimes,
+            processes: newProcesses,
+            filterCounts: counts,
+            activePorts: portSet.sorted(),
             sampleInstant: now,
             portError: portError
         )
@@ -138,21 +151,18 @@ final class ProcessMonitor {
     }
 
     // MARK: - Private State
-    private var timer: DispatchSourceTimer?
-    private var refreshTask: Task<Void, Never>?
-    private var previousCPUHistory: [Double] = []
-    private var previousMemoryHistory: [Double] = []
-    private let foregroundPollInterval: TimeInterval = 2.0
-    private let backgroundPollInterval: TimeInterval = 5.0
-    private let logger = Logger(subsystem: "com.tan.lucid", category: "ProcessMonitor")
-    private let timerQueue = DispatchQueue(label: "com.tan.lucid.timer", qos: .userInitiated)
-    private let sampler = ProcessSampler()
-
-    private var appNameCache: [pid_t: String] = [:]
-    private var shouldRefreshAppNames = true
-    private var isRefreshing = false
-
-    // MARK: - Lifecycle
+    @ObservationIgnored private var timer: DispatchSourceTimer?
+    @ObservationIgnored private var refreshTask: Task<Void, Never>?
+    @ObservationIgnored private var previousCPUHistory: [Double] = []
+    @ObservationIgnored private var previousMemoryHistory: [Double] = []
+    @ObservationIgnored private let foregroundPollInterval: TimeInterval = 2.5
+    @ObservationIgnored private let backgroundPollInterval: TimeInterval = 6.0
+    @ObservationIgnored private let logger = Logger(subsystem: "com.tan.lucid", category: "ProcessMonitor")
+    @ObservationIgnored private let timerQueue = DispatchQueue(label: "com.tan.lucid.timer", qos: .utility)
+    @ObservationIgnored private let sampler = ProcessSampler()
+    @ObservationIgnored private var appNameCache: [pid_t: String] = [:]
+    @ObservationIgnored private var appNameRefreshCounter = 0
+    @ObservationIgnored private var isRefreshing = false
 
     init() {}
 
@@ -169,7 +179,6 @@ final class ProcessMonitor {
         rescheduleTimer(interval: background ? backgroundPollInterval : foregroundPollInterval)
     }
 
-    /// Continue sampling at a lower cadence while inactive.
     func enterBackgroundCadence() {
         guard isRunning else {
             start(background: true)
@@ -191,7 +200,7 @@ final class ProcessMonitor {
     private func rescheduleTimer(interval: TimeInterval) {
         timer?.cancel()
         let newTimer = DispatchSource.makeTimerSource(queue: timerQueue)
-        newTimer.schedule(deadline: .now() + interval, repeating: interval)
+        newTimer.schedule(deadline: .now() + interval, repeating: interval, leeway: .milliseconds(200))
         newTimer.setEventHandler { [weak self] in
             Task { @MainActor in
                 self?.refresh()
@@ -201,10 +210,7 @@ final class ProcessMonitor {
         timer = newTimer
     }
 
-    // MARK: - Process Management
-
     func refresh() {
-        // Coalesce while assistive tech is traversing, and skip overlapping work.
         if assistiveTechnologyActive || isRefreshing {
             return
         }
@@ -215,9 +221,11 @@ final class ProcessMonitor {
             self.isRefreshing = true
             defer { self.isRefreshing = false }
 
-            self.shouldRefreshAppNames.toggle()
-            if self.shouldRefreshAppNames || self.appNameCache.isEmpty {
+            // App names rarely change — refresh every other sample.
+            self.appNameRefreshCounter += 1
+            if self.appNameRefreshCounter == 1 || self.appNameRefreshCounter % 2 == 0 || self.appNameCache.isEmpty {
                 var map: [pid_t: String] = [:]
+                map.reserveCapacity(64)
                 for app in NSWorkspace.shared.runningApplications {
                     if let name = app.localizedName {
                         map[app.processIdentifier] = name
@@ -227,32 +235,26 @@ final class ProcessMonitor {
             }
             let appNameMap = self.appNameCache
 
-            do {
-                let snapshot = await self.sampler.sample(appNameMap: appNameMap)
-                guard !Task.isCancelled else { return }
+            let snapshot = await self.sampler.sample(appNameMap: appNameMap)
+            guard !Task.isCancelled else { return }
 
-                let counts = FilterCounts(
-                    total: snapshot.processes.count,
-                    system: snapshot.processes.filter { $0.origin == .system }.count,
-                    user: snapshot.processes.filter { $0.origin == .user }.count,
-                    unknown: snapshot.processes.filter { $0.origin == .unknown }.count
-                )
-                let ports = Array(Set(snapshot.processes.flatMap(\.ports))).sorted()
+            if case .port(let port) = self.selectedFilter, !snapshot.activePorts.contains(port) {
+                self.lastError = "Port \(LucidFormat.port(port)) is no longer listening. Showing all processes."
+                self.selectedFilter = .all
+            } else if let portError = snapshot.portError {
+                self.lastError = portError
+            }
 
-                // Preserve a port filter that disappeared with a clear explanation.
-                if case .port(let port) = self.selectedFilter, !ports.contains(port) {
-                    self.lastError = "Port \(port) is no longer listening. Showing all processes."
-                    self.selectedFilter = .all
-                } else if let portError = snapshot.portError {
-                    self.lastError = portError
-                }
-
+            // Disable implicit animations so Table swaps don't hitch the window.
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
                 self.processes = snapshot.processes
-                self.filterCounts = counts
-                self.activePorts = ports
+                self.filterCounts = snapshot.filterCounts
+                self.activePorts = snapshot.activePorts
                 self.lastUpdated = Date()
                 self.isLoading = false
-                self.updateSystemStats()
+                self.updateSystemStats(using: snapshot.processes)
             }
         }
     }
@@ -307,9 +309,7 @@ final class ProcessMonitor {
         }
     }
 
-    // MARK: - Private Helpers
-
-    private func updateSystemStats() {
+    private func updateSystemStats(using processes: [LucidProcess]) {
         let memory = DarwinProcess.hostMemoryUsedBytes()
         let totalMemory = memory?.total ?? ProcessInfo.processInfo.physicalMemory
         let usedMemory = memory?.used ?? 0
@@ -325,16 +325,12 @@ final class ProcessMonitor {
 
         var cpuHistory = previousCPUHistory
         cpuHistory.append(totalCPU)
-        if cpuHistory.count > 12 {
-            cpuHistory.removeFirst()
-        }
+        if cpuHistory.count > 12 { cpuHistory.removeFirst() }
         previousCPUHistory = cpuHistory
 
         var memoryHistory = previousMemoryHistory
         memoryHistory.append(memoryPercent)
-        if memoryHistory.count > 12 {
-            memoryHistory.removeFirst()
-        }
+        if memoryHistory.count > 12 { memoryHistory.removeFirst() }
         previousMemoryHistory = memoryHistory
 
         stats = SystemStats(

@@ -3,15 +3,13 @@ import SwiftUI
 struct StyledTable: View {
     let processes: [LucidProcess]
     @Binding var selection: Set<ProcessIdentity>
-    @Binding var sortKey: ProcessSortKey
-    @Binding var sortAscending: Bool
 
     var body: some View {
         Table(processes, selection: $selection) {
             TableColumn("Name") { process in
                 Text(process.name)
                     .font(.body)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .lineLimit(1)
                     .help(process.description)
             }
             .width(min: 120, ideal: 180)
@@ -19,80 +17,48 @@ struct StyledTable: View {
             TableColumn("Origin") { process in
                 OriginTag(origin: process.origin)
             }
-            .width(min: 80, ideal: 100)
+            .width(min: 92, ideal: 108)
 
             TableColumn("Description") { process in
                 Text(process.description)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .help(process.description)
-                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .width(min: 140, ideal: 220)
+            .width(min: 140, ideal: 240)
 
             TableColumn("CPU") { process in
-                Text(process.cpuFormatted)
+                Text(verbatim: process.cpuFormatted)
                     .font(.body.monospacedDigit())
                     .frame(maxWidth: .infinity, alignment: .trailing)
+                    .foregroundStyle(process.cpuUsage >= 80 ? LucidTheme.statusCritical : .primary)
             }
-            .width(min: 60, ideal: 70)
+            .width(min: 64, ideal: 72)
 
             TableColumn("Memory") { process in
-                Text(process.memoryFormatted)
+                Text(verbatim: process.memoryFormatted)
                     .font(.body.monospacedDigit())
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
-            .width(min: 80, ideal: 90)
+            .width(min: 80, ideal: 92)
 
             TableColumn("PID") { process in
-                Text(String(process.pid))
+                Text(verbatim: LucidFormat.pid(process.pid))
                     .font(.body.monospacedDigit())
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
-            .width(min: 50, ideal: 60)
+            .width(min: 56, ideal: 64)
 
             TableColumn("Ports") { process in
-                Text(process.portsFormatted)
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                Text(verbatim: process.portsFormatted)
+                    .font(.body.monospacedDigit())
+                    .foregroundStyle(process.ports.isEmpty ? .tertiary : .secondary)
+                    .lineLimit(1)
                     .help(process.portsFormatted)
             }
-            .width(min: 60, ideal: 80)
+            .width(min: 64, ideal: 88)
         }
         .tableStyle(.inset(alternatesRowBackgrounds: true))
-        .safeAreaInset(edge: .top, spacing: 0) {
-            sortBar
-        }
-    }
-
-    private var sortBar: some View {
-        HStack(spacing: 8) {
-            Text("Sort")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            Picker("Sort", selection: $sortKey) {
-                ForEach(ProcessSortKey.allCases) { key in
-                    Text(key.label).tag(key)
-                }
-            }
-            .pickerStyle(.menu)
-            .labelsHidden()
-            .frame(maxWidth: 140)
-
-            Button {
-                sortAscending.toggle()
-            } label: {
-                Image(systemName: sortAscending ? "arrow.up" : "arrow.down")
-            }
-            .buttonStyle(.borderless)
-            .help(sortAscending ? "Ascending" : "Descending")
-
-            Spacer()
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(.bar)
     }
 }

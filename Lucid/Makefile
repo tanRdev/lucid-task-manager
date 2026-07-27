@@ -1,7 +1,7 @@
 .PHONY: all build test app run clean install dmg
 
 CONFIG ?= debug
-VERSION ?= 1.1.0
+VERSION ?= 1.1.1
 
 all: app
 

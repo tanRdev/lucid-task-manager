@@ -483,11 +483,23 @@ struct ProcessDictionary {
 
     // MARK: - Smart Lookup (multi-layer identification)
 
+    /// Cache for heuristic/path results (dictionary hits skip the cache).
+    private static let lookupCache = NSCache<NSString, LookupBox>()
+
+    private final class LookupBox: NSObject {
+        let processDescription: String
+        let origin: ProcessOrigin
+        init(_ processDescription: String, _ origin: ProcessOrigin) {
+            self.processDescription = processDescription
+            self.origin = origin
+        }
+    }
+
     /// Multi-layer process identification (dictionary → NSWorkspace → path → heuristics).
     /// `nsAppName` should be pre-resolved from NSWorkspace on the main thread before calling this.
     /// Origin is a heuristic ownership signal, not a termination-safety guarantee.
     static func smartLookup(name: String, path: String, nsAppName: String?) -> (String, ProcessOrigin) {
-        // 1. Static dictionary — exact match
+        // 1. Static dictionary — exact match (fast path, no cache needed)
         if let entry = dictionary[name] {
             return entry
         }
@@ -497,23 +509,24 @@ struct ProcessDictionary {
             return (appName, .user)
         }
 
-        // 3. App bundle extraction — derive app name from .app path component
+        let cacheKey = "\(name)|\(path)" as NSString
+        if let cached = lookupCache.object(forKey: cacheKey) {
+            return (cached.processDescription, cached.origin)
+        }
+
+        let result: (String, ProcessOrigin)
         if let bundleResult = appBundleLookup(name: name, path: path) {
-            return bundleResult
+            result = bundleResult
+        } else if let pathResult = pathBasedLookup(name: name, path: path) {
+            result = pathResult
+        } else if let patternResult = patternBasedLookup(name: name) {
+            result = patternResult
+        } else {
+            result = (name, .unknown)
         }
 
-        // 4. Path-based categorization
-        if let pathResult = pathBasedLookup(name: name, path: path) {
-            return pathResult
-        }
-
-        // 5. Name pattern heuristics — only when evidence is reasonably strong
-        if let patternResult = patternBasedLookup(name: name) {
-            return patternResult
-        }
-
-        // 6. Final fallback — unknown when evidence is weak
-        return (name, .unknown)
+        lookupCache.setObject(LookupBox(result.0, result.1), forKey: cacheKey)
+        return result
     }
 
     // MARK: - Layer 3: App bundle extraction

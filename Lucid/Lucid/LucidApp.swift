@@ -4,6 +4,7 @@ import SwiftUI
 struct LucidApp: App {
     @State private var monitor = ProcessMonitor()
     @State private var lifecycleObservers: [Any] = []
+    @AppStorage("pauseWhenInactive") private var pauseWhenInactive = false
 
     var body: some Scene {
         WindowGroup {
@@ -15,8 +16,7 @@ struct LucidApp: App {
                     setupLifecycleObservers()
                 }
         }
-        .windowStyle(.hiddenTitleBar)
-        
+
         Settings {
             SettingsView()
                 .environment(monitor)
@@ -30,13 +30,22 @@ struct LucidApp: App {
                 forName: NSApplication.didResignActiveNotification,
                 object: nil, queue: .main
             ) { _ in
-                monitor.stop()
+                Task { @MainActor in
+                    if pauseWhenInactive {
+                        monitor.stop(reason: "inactive")
+                    } else {
+                        monitor.enterBackgroundCadence()
+                    }
+                }
             },
             NotificationCenter.default.addObserver(
                 forName: NSApplication.didBecomeActiveNotification,
                 object: nil, queue: .main
             ) { _ in
-                monitor.start()
+                Task { @MainActor in
+                    monitor.start()
+                    monitor.refresh()
+                }
             }
         ]
     }

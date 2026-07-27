@@ -35,12 +35,26 @@ struct LucidTheme {
         dark: Color(red: 0.12, green: 0.13, blue: 0.15)
     )
 
-    // MARK: - Safety Indicators (Vibrant, Distinct)
-    static let safetySystem = Color(red: 0.15, green: 0.70, blue: 0.55)
+    // MARK: - Origin Indicators (neutral semantic — not "safe/unsafe")
+    static let originSystem = Color(
+        light: Color(red: 0.35, green: 0.40, blue: 0.48),
+        dark: Color(red: 0.55, green: 0.60, blue: 0.68)
+    )
 
-    static let safetyUser = Color(red: 0.85, green: 0.55, blue: 0.15)
+    static let originUser = Color(
+        light: Color(red: 0.20, green: 0.45, blue: 0.75),
+        dark: Color(red: 0.45, green: 0.65, blue: 0.90)
+    )
 
-    static let safetyUnknown = Color(red: 0.85, green: 0.25, blue: 0.25)
+    static let originUnknown = Color(
+        light: Color(red: 0.55, green: 0.45, blue: 0.25),
+        dark: Color(red: 0.75, green: 0.65, blue: 0.40)
+    )
+
+    // Legacy aliases
+    static let safetySystem = originSystem
+    static let safetyUser = originUser
+    static let safetyUnknown = originUnknown
 
     // MARK: - Text
     static let textPrimary = Color(
@@ -70,9 +84,9 @@ struct LucidTheme {
     )
 
     // MARK: - Status
-    static let statusSuccess = safetySystem
-    static let statusWarning = safetyUser
-    static let statusCritical = safetyUnknown
+    static let statusSuccess = Color(red: 0.20, green: 0.70, blue: 0.45)
+    static let statusWarning = Color(red: 0.85, green: 0.55, blue: 0.15)
+    static let statusCritical = Color(red: 0.85, green: 0.30, blue: 0.25)
 
     // MARK: - Typography Scale
     static let fontSizeXS: CGFloat = 10

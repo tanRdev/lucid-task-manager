@@ -1,18 +1,23 @@
 .PHONY: all build test app run clean install dmg
 
 CONFIG ?= debug
-VERSION ?= 1.0.0
+VERSION ?= 1.1.0
 
 all: app
 
 build:
 	swift build --configuration $(CONFIG)
 
+# XCTest requires the full Xcode toolchain (not Command Line Tools alone).
 test:
+	@if ! xcrun --find xctest >/dev/null 2>&1; then \
+		echo "error: XCTest is unavailable. Install full Xcode and run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer" >&2; \
+		exit 1; \
+	fi
 	swift test
 
 app: build
-	./build-app.sh $(CONFIG)
+	./build-app.sh $(CONFIG) $(VERSION)
 
 run: app
 	@BIN_PATH=$$(swift build --configuration $(CONFIG) --show-bin-path); \

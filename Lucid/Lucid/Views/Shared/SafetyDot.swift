@@ -1,12 +1,14 @@
 import SwiftUI
 
-struct SafetyDot: View {
-    let safety: Safety
+struct OriginDot: View {
+    let origin: ProcessOrigin
 
     var body: some View {
         Circle()
-            .fill(safety.color)
+            .fill(origin.color)
             .frame(width: 6, height: 6)
-            .accessibilityLabel("\(safety.label) process")
+            .accessibilityLabel("\(origin.label) process")
     }
 }
+
+typealias SafetyDot = OriginDot

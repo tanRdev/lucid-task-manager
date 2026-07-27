@@ -2,22 +2,30 @@ import SwiftUI
 
 struct PulsingStatusDot: View {
     @Environment(ProcessMonitor.self) var monitor
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isPulsing = false
 
     var body: some View {
         Circle()
-            .fill(LucidTheme.statusSuccess)
+            .fill(monitor.isRunning ? LucidTheme.statusSuccess : Color.secondary)
             .frame(width: 6, height: 6)
-            .opacity(isPulsing ? 1.0 : 0.5)
+            .opacity(shouldAnimate && isPulsing ? 0.45 : 1.0)
             .animation(
-                monitor.isRunning
+                shouldAnimate
                     ? .easeInOut(duration: 1.5).repeatForever(autoreverses: true)
                     : .default,
                 value: isPulsing
             )
             .onChange(of: monitor.isRunning) { _, running in
-                isPulsing = running
+                isPulsing = shouldAnimate && running
             }
-            .onAppear { isPulsing = monitor.isRunning }
+            .onAppear {
+                isPulsing = shouldAnimate && monitor.isRunning
+            }
+            .accessibilityHidden(true)
+    }
+
+    private var shouldAnimate: Bool {
+        monitor.isRunning && !reduceMotion
     }
 }

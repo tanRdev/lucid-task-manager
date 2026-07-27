@@ -1,22 +1,43 @@
 import Foundation
 
-struct LucidProcess: Identifiable, Hashable, Comparable {
-    var id: pid_t { pid }
+struct ProcessIdentity: Hashable, Codable, Sendable {
     let pid: pid_t
+    /// Kernel-reported process start time (seconds since epoch).
+    let startTime: UInt64
+
+    init(pid: pid_t, startTime: UInt64) {
+        self.pid = pid
+        self.startTime = startTime
+    }
+}
+
+struct LucidProcess: Identifiable, Hashable, Comparable, Sendable {
+    var id: ProcessIdentity { identity }
+
+    let identity: ProcessIdentity
     let name: String
     let description: String
     let cpuUsage: Double
     let memoryBytes: UInt64
-    let safety: Safety
+    let origin: ProcessOrigin
     let exePath: String
     let ports: [UInt16]
+    let userID: uid_t
+
+    var pid: pid_t { identity.pid }
+    var startTime: UInt64 { identity.startTime }
+
+    /// Prefer `origin`. Kept for call sites that still use the old name.
+    var safety: ProcessOrigin { origin }
+
+    var isProtected: Bool { origin.isProtected }
 
     func hash(into hasher: inout Hasher) {
-        hasher.combine(pid)
+        hasher.combine(identity)
     }
 
     static func == (lhs: LucidProcess, rhs: LucidProcess) -> Bool {
-        lhs.pid == rhs.pid
+        lhs.identity == rhs.identity
     }
 
     static func < (lhs: LucidProcess, rhs: LucidProcess) -> Bool {
@@ -42,7 +63,7 @@ struct LucidProcess: Identifiable, Hashable, Comparable {
 
     var portsFormatted: String {
         if ports.isEmpty {
-            return "-"
+            return "—"
         }
         return ports.map(String.init).joined(separator: ", ")
     }

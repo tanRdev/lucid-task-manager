@@ -1,15 +1,19 @@
 import SwiftUI
 
-struct SafetyTag: View {
-    let safety: Safety
+struct OriginTag: View {
+    let origin: ProcessOrigin
 
     var body: some View {
-        Text(safety.label)
-            .font(.system(size: LucidTheme.fontSizeXS, weight: .medium, design: .default))
-            .foregroundStyle(safety.color)
+        Text(origin.label)
+            .font(.caption.weight(.medium))
+            .foregroundStyle(origin.color)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
-            .background(safety.color.opacity(0.15))
-            .clipShape(Capsule())
+            .background(origin.color.opacity(0.12))
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+            .accessibilityLabel("Origin \(origin.label)")
     }
 }
+
+/// Legacy name kept for older call sites.
+typealias SafetyTag = OriginTag

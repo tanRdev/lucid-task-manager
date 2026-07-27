@@ -19,147 +19,142 @@ struct SidebarView: View {
         )
     }
 
-        var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Filters Section
-            VStack(alignment: .leading, spacing: 0) {
-                Text("FILTERS")
-                    .font(.system(size: 10, weight: .semibold, design: .default))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 16)
-                    .padding(.top, 16)
-                    .padding(.bottom, 8)
+    var body: some View {
+        List(selection: Binding(
+            get: { monitor.selectedFilter },
+            set: { monitor.selectedFilter = $0 }
+        )) {
+            Section("Filters") {
+                FilterButton(
+                    label: "All Processes",
+                    icon: "square.grid.2x2",
+                    count: monitor.filterCounts.total,
+                    isActive: monitor.selectedFilter == .all,
+                    action: { monitor.selectedFilter = .all }
+                )
+                .tag(FilterCategory.all)
 
-                VStack(spacing: 0) {
-                    FilterButton(
-                        label: "All Processes",
-                        icon: "square.grid.2x2",
-                        count: monitor.filterCounts.total,
-                        isActive: monitor.selectedFilter == .all,
-                        action: { monitor.selectedFilter = .all }
-                    )
+                FilterButton(
+                    label: "System",
+                    icon: "gearshape.fill",
+                    count: monitor.filterCounts.system,
+                    isActive: monitor.selectedFilter == .system,
+                    action: { monitor.selectedFilter = .system }
+                )
+                .tag(FilterCategory.system)
 
-                    FilterButton(
-                        label: "System",
-                        icon: "gearshape.fill",
-                        count: monitor.filterCounts.system,
-                        isActive: monitor.selectedFilter == .system,
-                        action: { monitor.selectedFilter = .system }
-                    )
+                FilterButton(
+                    label: "User",
+                    icon: "person.fill",
+                    count: monitor.filterCounts.user,
+                    isActive: monitor.selectedFilter == .user,
+                    action: { monitor.selectedFilter = .user }
+                )
+                .tag(FilterCategory.user)
 
-                    FilterButton(
-                        label: "User",
-                        icon: "person.fill",
-                        count: monitor.filterCounts.user,
-                        isActive: monitor.selectedFilter == .user,
-                        action: { monitor.selectedFilter = .user }
-                    )
-
-                    FilterButton(
-                        label: "Unknown",
-                        icon: "questionmark.circle.fill",
-                        count: monitor.filterCounts.unknown,
-                        isActive: monitor.selectedFilter == .unknown,
-                        action: { monitor.selectedFilter = .unknown }
-                    )
-                }
-                .padding(.horizontal, 12)
+                FilterButton(
+                    label: "Unknown",
+                    icon: "questionmark.circle.fill",
+                    count: monitor.filterCounts.unknown,
+                    isActive: monitor.selectedFilter == .unknown,
+                    action: { monitor.selectedFilter = .unknown }
+                )
+                .tag(FilterCategory.unknown)
             }
 
-            // Active Ports Section
             if !monitor.activePorts.isEmpty {
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("PORTS")
-                        .font(.system(size: 10, weight: .semibold, design: .default))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 16)
-                        .padding(.top, 20)
-                        .padding(.bottom, 8)
-
-                    ScrollView {
-                        VStack(spacing: 0) {
-                            ForEach(monitor.activePorts, id: \.self) { port in
-                                PortFilterRow(
-                                    port: port,
-                                    isActive: monitor.selectedFilter == .port(port),
-                                    onSelect: { monitor.selectedFilter = .port(port) },
-                                    onKill: { portToKill = port }
-                                )
-                            }
-                        }
-                        .padding(.horizontal, 12)
+                Section("Ports") {
+                    ForEach(monitor.activePorts, id: \.self) { port in
+                        PortFilterRow(
+                            port: port,
+                            isActive: monitor.selectedFilter == .port(port),
+                            onSelect: { monitor.selectedFilter = .port(port) },
+                            onKill: { portToKill = port }
+                        )
+                        .tag(FilterCategory.port(port))
                     }
-                    .frame(maxHeight: 160)
                 }
             }
+        }
+        .listStyle(.sidebar)
+        .safeAreaInset(edge: .bottom) {
+            VStack(alignment: .leading, spacing: 10) {
+                metricsRow
 
-            Spacer()
-
-            // Metrics Row at bottom
-            metricsRow
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-
-            Rectangle()
-                .fill(LucidTheme.divider)
-                .frame(height: 1)
-
-            // Footer - clean minimal row
-            HStack(spacing: 10) {
-                if monitor.isRunning {
+                HStack(spacing: 8) {
                     PulsingStatusDot()
-                } else {
-                    Circle()
-                        .fill(Color.gray)
-                        .frame(width: 6, height: 6)
+
+                    Text(statusLabel)
+                        .font(.caption)
+                        .foregroundStyle(monitor.isRunning ? LucidTheme.statusSuccess : .secondary)
+
+                    Spacer()
                 }
-
-                Text(monitor.isRunning ? "Live" : "Paused")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(monitor.isRunning ? LucidTheme.statusSuccess : .secondary)
-
-                Spacer()
 
                 Text(systemInfoString)
-                    .font(.system(size: 10))
+                    .font(.caption2)
                     .foregroundStyle(.secondary)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.bar)
         }
         .confirmationDialog(
-            "Kill Processes",
+            "Kill Processes on Port",
             isPresented: portKillBinding,
             presenting: portToKill
         ) { port in
-            killButton(for: port)
+            let killable = monitor.killableProcesses(onPort: port)
+            if killable.isEmpty {
+                Button("OK", role: .cancel) { portToKill = nil }
+            } else {
+                Button("Kill \(killable.count) Process\(killable.count == 1 ? "" : "es")", role: .destructive) {
+                    if case .failure(let error) = monitor.killProcesses(killable) {
+                        killError = error.localizedDescription
+                    } else {
+                        Task { @MainActor in
+                            try? await Task.sleep(for: .milliseconds(500))
+                            monitor.refresh()
+                        }
+                    }
+                    portToKill = nil
+                }
+                Button("Cancel", role: .cancel) { portToKill = nil }
+            }
         } message: { port in
-            killDialogMessage(for: port)
+            portKillMessage(for: port)
         }
         .alert("Kill Failed", isPresented: killErrorBinding) {
             Button("OK") { killError = nil }
         } message: {
             Text(killError ?? "")
         }
+        .navigationTitle("Lucid")
     }
 
-    // MARK: - Metrics Row (compact inline display)
+    private var statusLabel: String {
+        if monitor.isPausedForInactivity {
+            return "Paused while inactive"
+        }
+        return monitor.isRunning ? "Live" : "Paused"
+    }
+
     private var metricsRow: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 12) {
             MetricItem(
                 label: "CPU",
-                value: String(format: "%.1f%%", monitor.stats.cpuUsage),
+                value: String(format: "%.0f%%", monitor.stats.cpuUsage),
                 threshold: 80.0,
                 currentValue: monitor.stats.cpuUsage
             )
             MetricItem(
-                label: "MEM",
-                value: String(format: "%.1f%%", monitor.stats.memoryUsage),
+                label: "Mem",
+                value: String(format: "%.0f%%", monitor.stats.memoryUsage),
                 threshold: 80.0,
                 currentValue: monitor.stats.memoryUsage
             )
             MetricItem(
-                label: "PROC",
+                label: "Proc",
                 value: "\(monitor.filterCounts.total)",
                 threshold: 500,
                 currentValue: Double(monitor.filterCounts.total)
@@ -167,23 +162,23 @@ struct SidebarView: View {
         }
     }
 
-    private func killButton(for port: UInt16) -> some View {
-        Button("Kill All Processes on Port \(port)", role: .destructive) {
-            let processesToKill = monitor.processes.filter { $0.ports.contains(port) }
-            if case .failure(let error) = monitor.killProcesses(processesToKill) {
-                killError = error.localizedDescription
-            } else {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    monitor.refresh()
-                }
+    private func portKillMessage(for port: UInt16) -> Text {
+        let killable = monitor.killableProcesses(onPort: port)
+        let protected = monitor.protectedProcesses(onPort: port)
+        var lines: [String] = []
+        if killable.isEmpty {
+            lines.append("No unprotected processes are listening on port \(port).")
+        } else {
+            lines.append("Will terminate:")
+            lines.append(contentsOf: killable.prefix(8).map { "• \($0.name) (PID \($0.pid))" })
+            if killable.count > 8 {
+                lines.append("• …and \(killable.count - 8) more")
             }
-            portToKill = nil
         }
-    }
-
-    private func killDialogMessage(for port: UInt16) -> some View {
-        let processCount = monitor.processes.filter { $0.ports.contains(port) }.count
-        return Text("Are you sure you want to kill all \(processCount) process(es) using port \(port)?")
+        if !protected.isEmpty {
+            lines.append("Protected (skipped): \(protected.map(\.name).joined(separator: ", "))")
+        }
+        return Text(lines.joined(separator: "\n"))
     }
 
     private var systemInfoString: String {
@@ -191,11 +186,10 @@ struct SidebarView: View {
         let cpuCores = ProcessInfo.processInfo.activeProcessorCount
         let totalRAM = ProcessInfo.processInfo.physicalMemory
         let ramGB = String(format: "%.0f", Double(totalRAM) / (1024 * 1024 * 1024))
-        return "\(version.majorVersion).\(version.minorVersion) • \(cpuCores) cores • \(ramGB) GB"
+        return "macOS \(version.majorVersion).\(version.minorVersion) · \(cpuCores) cores · \(ramGB) GB"
     }
 }
 
-// MARK: - Metric Item (compact inline metric)
 struct MetricItem: View {
     let label: String
     let value: String
@@ -208,16 +202,16 @@ struct MetricItem: View {
         } else if currentValue >= threshold * 0.7 {
             return LucidTheme.statusWarning
         }
-        return LucidTheme.textPrimary
+        return .primary
     }
 
     var body: some View {
-        HStack(spacing: 4) {
+        VStack(alignment: .leading, spacing: 2) {
             Text(label)
-                .font(.system(size: 10, weight: .semibold))
+                .font(.caption2)
                 .foregroundStyle(.secondary)
             Text(value)
-                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                .font(.caption.monospacedDigit().weight(.medium))
                 .foregroundStyle(statusColor)
         }
     }

@@ -3,101 +3,58 @@ import AppKit
 
 struct SettingsView: View {
     @AppStorage("appTheme") private var appTheme: String = "system"
+    @AppStorage("pauseWhenInactive") private var pauseWhenInactive = false
     @Environment(\.dismiss) private var dismiss
 
+    private var appVersion: String {
+        let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—"
+        return "\(short) (\(build))"
+    }
+
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            HStack {
-                Text("Settings")
-                    .font(.title3)
-                    .fontWeight(.semibold)
-                Spacer()
-                Button(action: { dismiss() }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
+        Form {
+            Section {
+                Picker("Theme", selection: $appTheme) {
+                    Text("System").tag("system")
+                    Text("Light").tag("light")
+                    Text("Dark").tag("dark")
                 }
-                .buttonStyle(.plain)
+                .pickerStyle(.segmented)
+
+                Toggle("Pause when inactive", isOn: $pauseWhenInactive)
+            } header: {
+                Text("Appearance & Energy")
+            } footer: {
+                Text(pauseWhenInactive
+                    ? "Monitoring stops when Lucid loses focus."
+                    : "Monitoring continues at a lower cadence while inactive.")
             }
-            .padding(20)
 
-            Divider()
+            Section("About") {
+                LabeledContent("Version", value: appVersion)
 
-            // Settings Content
-            VStack(alignment: .leading, spacing: 24) {
-                // Appearance
-                VStack(alignment: .leading, spacing: 10) {
-                    Label("Appearance", systemImage: "paintbrush")
-                        .font(.headline)
-
-                    Picker("Theme", selection: $appTheme) {
-                        Text("System").tag("system")
-                        Text("Light").tag("light")
-                        Text("Dark").tag("dark")
-                    }
-                    .pickerStyle(.segmented)
+                Button("View Releases") {
+                    openURL("https://github.com/tanRdev/lucid-task-manager/releases")
                 }
 
-                Divider()
-
-                // Updates
-                VStack(alignment: .leading, spacing: 10) {
-                    Label("Updates", systemImage: "arrow.triangle.2.circlepath")
-                        .font(.headline)
-
-                    Button(action: checkForUpdates) {
-                        HStack {
-                            Text("Check for Updates")
-                            Spacer()
-                            Image(systemName: "arrow.clockwise")
-                                .foregroundStyle(.secondary)
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(LucidTheme.backgroundSurface)
-                        .cornerRadius(6)
-                    }
-                    .buttonStyle(.plain)
-                }
-
-                Divider()
-
-                // About
-                VStack(alignment: .leading, spacing: 10) {
-                    Label("About", systemImage: "info.circle")
-                        .font(.headline)
-
-                    Button(action: openRepository) {
-                        HStack {
-                            Text("Visit Repository")
-                            Spacer()
-                            Image(systemName: "arrow.up.right.square")
-                                .foregroundStyle(.secondary)
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(LucidTheme.backgroundSurface)
-                        .cornerRadius(6)
-                    }
-                    .buttonStyle(.plain)
+                Button("Visit Repository") {
+                    openURL("https://github.com/tanRdev/lucid-task-manager")
                 }
             }
-            .padding(20)
-
-            Spacer()
         }
-        .frame(width: 380, height: 400)
-    }
-
-    private func checkForUpdates() {
-        if let url = URL(string: "https://github.com/tanRdev/lucid/releases") {
-            NSWorkspace.shared.open(url)
+        .formStyle(.grouped)
+        .frame(width: 420, height: 320)
+        .navigationTitle("Settings")
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Done") { dismiss() }
+            }
         }
     }
 
-    private func openRepository() {
-        if let url = URL(string: "https://github.com/tanRdev/lucid") {
+    private func openURL(_ string: String) {
+        if let url = URL(string: string) {
             NSWorkspace.shared.open(url)
         }
     }

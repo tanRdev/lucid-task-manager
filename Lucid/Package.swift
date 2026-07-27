@@ -1,4 +1,4 @@
-// swift-tools-version:5.9
+// swift-tools-version:6.0
 import PackageDescription
 
 let package = Package(
@@ -20,16 +20,23 @@ let package = Package(
             path: "Lucid",
             exclude: [
                 "Info.plist",
-                "Lucid.entitlements"
+                "Lucid.entitlements",
+                "BridgingHeader.h"
             ],
             resources: [
                 .copy("Assets.xcassets")
+            ],
+            swiftSettings: [
+                .swiftLanguageMode(.v5)
             ]
         ),
         .testTarget(
             name: "LucidTests",
             dependencies: ["Lucid"],
-            path: "LucidTests"
+            path: "LucidTests",
+            swiftSettings: [
+                .swiftLanguageMode(.v5)
+            ]
         )
     ]
 )

@@ -1,64 +1,98 @@
 import SwiftUI
-import AppKit
 
 struct StyledTable: View {
     let processes: [LucidProcess]
-    @Binding var selection: Set<LucidProcess.ID>
-    @Binding var sortOrder: [KeyPathComparator<LucidProcess>]
+    @Binding var selection: Set<ProcessIdentity>
+    @Binding var sortKey: ProcessSortKey
+    @Binding var sortAscending: Bool
 
     var body: some View {
-        Table(processes, selection: $selection, sortOrder: $sortOrder) {
-            TableColumn("Name", value: \.name) { process in
+        Table(processes, selection: $selection) {
+            TableColumn("Name") { process in
                 Text(process.name)
-                    .font(.system(.body, design: .monospaced))
+                    .font(.body)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .help(process.description)
             }
+            .width(min: 120, ideal: 180)
 
-            TableColumn("Tag") { process in
-                HStack(spacing: 4) {
-                    Image(systemName: process.safety.systemImage)
-                        .font(.system(size: 10))
-                        .foregroundStyle(process.safety.color)
-                    Text(process.safety.label)
-                        .font(.system(size: LucidTheme.fontSizeXS, weight: .medium))
-                        .foregroundStyle(process.safety.color)
-                }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(process.safety.color.opacity(0.15))
-                .clipShape(Capsule())
+            TableColumn("Origin") { process in
+                OriginTag(origin: process.origin)
             }
             .width(min: 80, ideal: 100)
 
-            TableColumn("Description", value: \.description) { process in
+            TableColumn("Description") { process in
                 Text(process.description)
-                    .font(.system(.body, design: .default))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                    .help(process.description)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .width(min: 140, ideal: 220)
 
-            TableColumn("CPU", value: \.cpuUsage) { process in
+            TableColumn("CPU") { process in
                 Text(process.cpuFormatted)
-                    .font(.system(.body, design: .monospaced))
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .font(.body.monospacedDigit())
+                    .frame(maxWidth: .infinity, alignment: .trailing)
             }
+            .width(min: 60, ideal: 70)
 
-            TableColumn("Memory", value: \.memoryBytes) { process in
+            TableColumn("Memory") { process in
                 Text(process.memoryFormatted)
-                    .font(.system(.body, design: .monospaced))
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .font(.body.monospacedDigit())
+                    .frame(maxWidth: .infinity, alignment: .trailing)
             }
+            .width(min: 80, ideal: 90)
 
-            TableColumn("Path", value: \.exePath) { process in
-                Text(process.exePath)
-                    .font(.system(.caption, design: .monospaced))
+            TableColumn("PID") { process in
+                Text(String(process.pid))
+                    .font(.body.monospacedDigit())
                     .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
             }
+            .width(min: 50, ideal: 60)
+
+            TableColumn("Ports") { process in
+                Text(process.portsFormatted)
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .help(process.portsFormatted)
+            }
+            .width(min: 60, ideal: 80)
         }
-        .tableStyle(.inset(alternatesRowBackgrounds: false))
-        .scrollContentBackground(.hidden)
-        .background(LucidTheme.backgroundBase)
+        .tableStyle(.inset(alternatesRowBackgrounds: true))
+        .safeAreaInset(edge: .top, spacing: 0) {
+            sortBar
+        }
+    }
+
+    private var sortBar: some View {
+        HStack(spacing: 8) {
+            Text("Sort")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Picker("Sort", selection: $sortKey) {
+                ForEach(ProcessSortKey.allCases) { key in
+                    Text(key.label).tag(key)
+                }
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .frame(maxWidth: 140)
+
+            Button {
+                sortAscending.toggle()
+            } label: {
+                Image(systemName: sortAscending ? "arrow.up" : "arrow.down")
+            }
+            .buttonStyle(.borderless)
+            .help(sortAscending ? "Ascending" : "Descending")
+
+            Spacer()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(.bar)
     }
 }

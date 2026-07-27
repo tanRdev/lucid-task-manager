@@ -1,18 +1,28 @@
 import SwiftUI
 
-enum Safety: String, Codable, Hashable {
+/// Heuristic ownership/origin of a process — not a guarantee that termination is safe.
+enum ProcessOrigin: String, Codable, Hashable, Sendable {
     case system
     case user
     case unknown
 
+    /// System-origin processes are protected from termination by default.
+    var isProtected: Bool {
+        self == .system
+    }
+
+    var allowsTermination: Bool {
+        !isProtected
+    }
+
     var color: Color {
         switch self {
         case .system:
-            return LucidTheme.safetySystem
+            return LucidTheme.originSystem
         case .user:
-            return LucidTheme.safetyUser
+            return LucidTheme.originUser
         case .unknown:
-            return LucidTheme.safetyUnknown
+            return LucidTheme.originUnknown
         }
     }
 
@@ -38,3 +48,6 @@ enum Safety: String, Codable, Hashable {
         }
     }
 }
+
+/// Legacy alias used during migration; prefer `ProcessOrigin`.
+typealias Safety = ProcessOrigin

@@ -2,7 +2,7 @@ import Foundation
 import AppKit
 
 struct ProcessDictionary {
-    private static let dictionary: [String: (String, Safety)] = [
+    private static let dictionary: [String: (String, ProcessOrigin)] = [
         // Core macOS System Processes (Green - System)
         "kernel_task": ("macOS Kernel", .system),
         "launchd": ("System Launch Daemon", .system),
@@ -470,11 +470,11 @@ struct ProcessDictionary {
         "screen": ("GNU Screen", .user),
     ]
 
-    static func lookup(_ processName: String) -> (String, Safety)? {
+    static func lookup(_ processName: String) -> (String, ProcessOrigin)? {
         dictionary[processName]
     }
 
-    static func lookup(_ processName: String, defaultDescription: String = "Unknown") -> (String, Safety) {
+    static func lookup(_ processName: String, defaultDescription: String = "Unknown") -> (String, ProcessOrigin) {
         if let entry = dictionary[processName] {
             return entry
         }
@@ -483,10 +483,10 @@ struct ProcessDictionary {
 
     // MARK: - Smart Lookup (multi-layer identification)
 
-    /// Multi-layer process identification with optional LLM fallback.
+    /// Multi-layer process identification (dictionary → NSWorkspace → path → heuristics).
     /// `nsAppName` should be pre-resolved from NSWorkspace on the main thread before calling this.
-    /// `llmService` is optional - if provided, will use LLM as final layer before marking unknown.
-    static func smartLookup(name: String, path: String, nsAppName: String?, llmService: LLMService? = nil) async -> (String, Safety) {
+    /// Origin is a heuristic ownership signal, not a termination-safety guarantee.
+    static func smartLookup(name: String, path: String, nsAppName: String?) -> (String, ProcessOrigin) {
         // 1. Static dictionary — exact match
         if let entry = dictionary[name] {
             return entry
@@ -507,25 +507,18 @@ struct ProcessDictionary {
             return pathResult
         }
 
-        // 5. Name pattern heuristics
+        // 5. Name pattern heuristics — only when evidence is reasonably strong
         if let patternResult = patternBasedLookup(name: name) {
             return patternResult
         }
 
-        // 6. LLM fallback (if available)
-        if let llmService = llmService {
-            if let llmResult = await llmService.identifyProcess(name: name, path: path) {
-                return llmResult
-            }
-        }
-
-        // 7. Final fallback — still unknown
+        // 6. Final fallback — unknown when evidence is weak
         return (name, .unknown)
     }
 
     // MARK: - Layer 3: App bundle extraction
 
-    private static func appBundleLookup(name: String, path: String) -> (String, Safety)? {
+    private static func appBundleLookup(name: String, path: String) -> (String, ProcessOrigin)? {
         guard !path.isEmpty else { return nil }
 
         // Find the outermost .app bundle in the path
@@ -542,18 +535,18 @@ struct ProcessDictionary {
 
         // Determine if this process IS the app or a helper/subprocess of it
         let isHelper = name != appName
-        let safety: Safety = path.hasPrefix("/Applications") || path.contains("/Users/") ? .user : .system
+        let classifiedOrigin: ProcessOrigin = path.hasPrefix("/Applications") || path.contains("/Users/") ? .user : .system
 
         if isHelper {
-            return ("\(appName) (\(humanizeProcessRole(name)))", safety)
+            return ("\(appName) (\(humanizeProcessRole(name)))", classifiedOrigin)
         } else {
-            return (appName, safety)
+            return (appName, classifiedOrigin)
         }
     }
 
     // MARK: - Layer 4: Path-based categorization
 
-    private static func pathBasedLookup(name: String, path: String) -> (String, Safety)? {
+    private static func pathBasedLookup(name: String, path: String) -> (String, ProcessOrigin)? {
         guard !path.isEmpty else { return nil }
 
         // Apple system paths
@@ -598,7 +591,7 @@ struct ProcessDictionary {
 
     // MARK: - Layer 5: Name pattern heuristics
 
-    private static func patternBasedLookup(name: String) -> (String, Safety)? {
+    private static func patternBasedLookup(name: String) -> (String, ProcessOrigin)? {
         // com.apple.* prefix — definitely Apple system
         if name.hasPrefix("com.apple.") {
             let shortName = String(name.dropFirst("com.apple.".count))
@@ -630,41 +623,9 @@ struct ProcessDictionary {
             return ("Node.js (\(name))", .user)
         }
 
-        // Common daemon suffix pattern: name ends in 'd' and is lowercase
-        // (e.g. "bluetoothd", "networkd") — but not short words like "pod"
-        if name.count > 3,
-           name.last == "d",
-           name == name.lowercased(),
-           !name.contains(" "),
-           !name.contains(".") {
-            let baseName = String(name.dropLast())
-            return ("\(baseName.capitalized) Service", .system)
-        }
-
-        // Agent pattern
-        if name.hasSuffix("Agent") || name.hasSuffix("agent") {
-            return ("\(name)", .system)
-        }
-
-        // Helper pattern
-        if name.contains("Helper") || name.contains("helper") {
-            return ("\(name)", .system)
-        }
-
-        // Extension pattern
-        if name.hasSuffix("Extension") || name.hasSuffix("extension") {
-            return ("\(name)", .system)
-        }
-
-        // Service pattern
-        if name.hasSuffix("Service") || name.hasSuffix("service") {
-            return ("\(name)", .system)
-        }
-
-        // XPC service pattern (common for sandboxed subprocesses)
-        if name.contains("XPC") || name.contains("xpc") {
-            return ("\(name)", .system)
-        }
+        // Weak name heuristics alone are not enough to claim System origin.
+        // Leave Agent/Helper/Service/XPC/*d patterns as Unknown unless a stronger
+        // path or dictionary signal classified them above.
 
         // Language runtime patterns
         if name.hasPrefix("python") || name.hasSuffix(".py") {

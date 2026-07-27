@@ -8,9 +8,9 @@
 <p>A plain-English activity monitor for macOS built with native SwiftUI.</p>
 
 <p>
-  <a href="https://swift.org"><img src="https://img.shields.io/badge/Swift-6.2-FA7343?style=flat-square&logo=swift&logoColor=white" alt="Swift"></a>
+  <a href="https://swift.org"><img src="https://img.shields.io/badge/Swift-6.0-FA7343?style=flat-square&logo=swift&logoColor=white" alt="Swift"></a>
   <a href="https://www.apple.com/macos"><img src="https://img.shields.io/badge/macOS-14+-000000?style=flat-square&logo=apple&logoColor=white" alt="macOS"></a>
-  <a href="https://github.com/tanRdev/lucid-task-manager/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/tanRdev/lucid-task-manager/ci.yml?branch=master&style=flat-square&label=CI" alt="CI"></a>
+  <a href="https://github.com/tanRdev/lucid-task-manager/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/tanRdev/lucid-task-manager/ci.yml?branch=main&style=flat-square&label=CI" alt="CI"></a>
   <a href="https://github.com/tanRdev/lucid-task-manager/releases"><img src="https://img.shields.io/github/v/release/tanRdev/lucid-task-manager?style=flat-square" alt="Release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="License"></a>
 </p>
@@ -26,7 +26,7 @@
 
 ## Overview
 
-**Lucid** turns cryptic process names like `mds_stores`, `configd`, and `distnoted` into plain-English descriptions so you can quickly understand what is running on your Mac, how much CPU or memory it is using, and whether it is safe to terminate.
+**Lucid** turns cryptic process names like `mds_stores`, `configd`, and `distnoted` into plain-English descriptions so you can quickly understand what is running on your Mac, how much CPU or memory it is using, and where it likely came from.
 
 ## Quick Start
 
@@ -43,7 +43,8 @@ This builds `Lucid.app` from source and opens it locally.
 ### Requirements
 
 - macOS 14 or newer
-- A Swift toolchain that supports `swift-tools-version: 6.2`
+- Swift 6.0+ toolchain (`swift-tools-version: 6.0`)
+- **Full Xcode** (not Command Line Tools alone) to run `make test` / `swift test` — XCTest ships with Xcode
 
 ### Build From Source
 
@@ -53,7 +54,7 @@ cd lucid-task-manager/Lucid
 make app
 ```
 
-The generated app bundle is placed in the Swift build output directory.
+The generated app bundle is placed in the Swift build output directory and ad-hoc signed (`codesign --verify --deep --strict` must pass).
 
 ### Launch During Development
 
@@ -71,89 +72,94 @@ make install
 
 Or open `Lucid/Package.swift` in Xcode and run the app there.
 
+### Create a DMG
+
+```bash
+cd Lucid
+make dmg VERSION=1.1.0
+```
+
+Set `CODESIGN_IDENTITY` to a Developer ID Application identity for distribution signing. Optionally set `NOTARYTOOL_PROFILE` to notarize with `notarytool`.
+
 > [!NOTE]
 > Lucid disables App Sandbox so it can inspect running processes. Development builds work locally; distributing the app outside development requires Developer ID signing and notarization.
 
-### First Launch
+### First Launch (developer troubleshooting)
 
-macOS may display a message that the app cannot be verified. To open it:
+If Gatekeeper blocks an unsigned or ad-hoc build:
 
-**Option 1: Right-click**
-
-1. **Right-click** (or Control-click) Lucid.app in Finder.
-2. Select **Open** from the context menu.
-3. Click **Open** in the dialog that appears.
-
-**Option 2: Terminal**
+1. **Right-click** Lucid.app in Finder → **Open** → **Open** again, or
+2. Remove quarantine in Terminal (developer machines only):
 
 ```bash
 xattr -d com.apple.quarantine /Applications/Lucid.app
 ```
 
-You only need to do this once. After that, Lucid opens normally.
+Prefer Developer ID–signed and notarized builds for end users.
 
 ## Usage
 
 1. Launch Lucid.
-2. Browse live processes sorted by CPU, memory, name, or PID.
-3. Search by process name or description.
-4. Filter by safety category or by listening port from the sidebar.
-5. Use the context menu to kill processes, copy executable paths, or reveal binaries in Finder.
+2. Browse live processes; sort by name, origin, description, CPU, memory, PID, or ports.
+3. Search from the toolbar (`⌘F`).
+4. Filter by origin or listening port from the sidebar.
+5. Inspect a process in the inspector for path, ports, and actions.
+6. Terminate only unprotected processes (system-origin processes are blocked).
 
-### Safety Indicators
+### Origin Indicators
 
-| Category | Meaning |
+| Origin | Meaning |
 | --- | --- |
-| System | Protected macOS processes that Lucid treats as unsafe to kill |
-| User | User-installed or user-owned apps and processes |
-| Unknown | Processes that could not be confidently classified |
+| System | Likely macOS / Apple system software. Protected from termination by default. |
+| User | Likely user-installed or user-owned apps and tools. |
+| Unknown | Classification evidence was weak — treat carefully. |
+
+Origin is a heuristic ownership signal, not a guarantee that quitting a process is safe for your work.
 
 ## Features
 
 | Feature | Description |
 | --- | --- |
 | Plain-English process names | Maps hundreds of common macOS processes to human-readable descriptions |
-| Real-time monitoring | Tracks CPU and memory usage with compact history charts |
-| Port visibility | Shows which processes are listening on which ports |
-| Safer process termination | Confirms destructive actions and protects system processes |
-| Native macOS interface | Built in SwiftUI with macOS-focused visuals and controls |
+| Real-time monitoring | Tracks per-process CPU (Activity Monitor–style) and host memory used |
+| Port visibility | Shows listening ports in the sidebar, table, and inspector |
+| Safer process termination | Confirms destructive actions; blocks system-origin processes; verifies PID + start time |
+| Native macOS interface | `NavigationSplitView`, toolbar search, and process inspector |
 | Zero third-party dependencies | Uses Swift Package Manager with Apple frameworks only |
 
 ## Architecture
 
 ```text
 Lucid/
-├── LucidApp.swift                 # App entry point
-├── ContentView.swift              # Main table and process actions
+├── LucidApp.swift                 # App entry point and lifecycle
+├── ContentView.swift              # Navigation split, table, inspector
 ├── Models/
-│   ├── LucidProcess.swift         # Process model and derived fields
-│   ├── ProcessSortMode.swift      # Sorting options
-│   └── Safety.swift               # Safety classification
+│   ├── LucidProcess.swift         # Process model + ProcessIdentity
+│   ├── ProcessOrigin.swift        # Origin classification (not termination policy alone)
+│   └── SystemStats.swift          # Host CPU/memory summary
 ├── Services/
-│   ├── ProcessMonitor.swift       # Observable app state and refresh loop
+│   ├── ProcessMonitor.swift       # @MainActor UI state + ProcessSampler actor
 │   ├── DarwinProcess.swift        # Darwin process API interop
 │   ├── ProcessDictionary.swift    # Human-readable process name mapping
-│   └── PortScanner.swift          # `lsof`-based listening port detection
+│   └── PortScanner.swift          # Actor-isolated `lsof` port detection
 ├── Views/
-│   ├── Content/                   # Header and process table UI
-│   ├── Dashboard/                 # Metrics and sparklines
-│   ├── Shared/                    # Shared safety/status components
-│   └── Sidebar/                   # Filters, ports, and system summary
+│   ├── Content/                   # Table, settings, inspector chrome
+│   ├── Shared/                    # Origin indicators
+│   └── Sidebar/                   # Filters, ports, status
 └── Theme/
-    └── GlassModifiers.swift       # Shared surface styling
+    └── LucidTheme.swift           # Colors and spacing
 ```
 
 ## How It Works
 
-Lucid combines Darwin process APIs, AppKit metadata, and periodic polling to build a readable live view of macOS activity:
-
 1. `proc_listallpids()` enumerates running processes.
-2. `proc_pidinfo()` collects CPU time and resident memory.
-3. `proc_name()` and `proc_pidpath()` identify executables.
-4. `NSWorkspace.shared.runningApplications` fills in full GUI app names when system APIs truncate them.
-5. `lsof -iTCP -sTCP:LISTEN -n -P` maps listening ports back to PIDs.
+2. `proc_pidinfo()` collects CPU time, resident memory, start time, and uid.
+3. `proc_name()` / `proc_pidpath()` identify executables.
+4. Host `vm_statistics64` provides Memory Used (active + wired + compressed).
+5. `NSWorkspace.shared.runningApplications` fills in GUI app names.
+6. `lsof -iTCP -sTCP:LISTEN -n -P` maps listening ports to PIDs.
 
-`ProcessMonitor` refreshes this data on a task-based loop and keeps the UI state synchronized through `@Observable` state.
+`ProcessMonitor` publishes UI state on the main actor. Sampling runs in a dedicated `ProcessSampler` actor and uses real monotonic intervals between samples for CPU deltas.
 
 > [!WARNING]
 > Some root-owned processes expose limited metrics without elevated privileges, so they may appear with partial CPU or memory information.
@@ -162,17 +168,18 @@ Lucid combines Darwin process APIs, AppKit metadata, and periodic polling to bui
 
 ```bash
 cd Lucid
+# Requires full Xcode selected via xcode-select
 make test
 make app
 make run
 ```
 
-The repository's CI workflow is configured to run:
+CI (`.github/workflows/ci.yml`) on `macos-14` runs:
 
-- `swift build --target Lucid`
-- `swift build -Xswiftc -warn-concurrency --target Lucid`
 - `swift test`
-- `./build-app.sh debug`
+- `swift build -Xswiftc -warn-concurrency --target Lucid`
+- `swift build --configuration release --target Lucid`
+- `./build-app.sh debug` plus strict `codesign` verification
 
 ## Contributing
 
@@ -190,6 +197,8 @@ Contributions are welcome. Lucid is open source under the [MIT License](LICENSE)
 ```bash
 git clone https://github.com/tanRdev/lucid-task-manager.git
 cd lucid-task-manager/Lucid
+# Install Xcode, then:
+sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 make test
 ```
 
@@ -198,7 +207,7 @@ make test
 - Follow existing Swift conventions and formatting
 - Add tests for new functionality
 - Keep commits focused and descriptive
-- Run `make test` before opening a PR
+- Run `make test` before opening a PR (requires Xcode)
 
 ## Resources
 

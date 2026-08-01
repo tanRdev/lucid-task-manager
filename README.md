@@ -174,7 +174,7 @@ make app
 make run
 ```
 
-CI (`.github/workflows/ci.yml`) on `macos-14` runs:
+CI (`.github/workflows/ci.yml`) on `macos-26` runs:
 
 - `swift test`
 - `swift build -Xswiftc -warn-concurrency --target Lucid`

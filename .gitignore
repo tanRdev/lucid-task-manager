@@ -73,3 +73,6 @@ Temporary Items
 
 # Conductor workspace
 .context
+
+# Local Pi agent state
+.pi/

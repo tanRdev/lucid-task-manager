@@ -77,7 +77,8 @@ final class LucidTests: XCTestCase {
         memoryBytes: UInt64 = 100 * 1024 * 1024,
         origin: ProcessOrigin = .user,
         exePath: String = "/usr/bin/test",
-        ports: [UInt16] = []
+        ports: [UInt16] = [],
+        userID: uid_t = 501
     ) -> LucidProcess {
         LucidProcess(
             identity: ProcessIdentity(pid: pid, startTime: startTime),
@@ -88,7 +89,7 @@ final class LucidTests: XCTestCase {
             origin: origin,
             exePath: exePath,
             ports: ports,
-            userID: 501
+            userID: userID
         )
     }
 
@@ -150,5 +151,124 @@ final class LucidTests: XCTestCase {
             nsAppName: nil
         )
         XCTAssertEqual(result.1, .system)
+    }
+
+    // MARK: - Kill Path Tests
+
+    func testClassifyKillTargetsBlocksProtectedSystem() throws {
+        let protected = makeProcess(origin: .system)
+        let result = ProcessMonitor.classifyKillTargets([protected], confirmedRisky: true)
+
+        XCTAssertTrue(result.allowed.isEmpty)
+        XCTAssertTrue(result.risky.isEmpty)
+        XCTAssertEqual(result.errors.count, 1)
+        XCTAssertTrue(result.errors[0].contains("protected system process"))
+    }
+
+    func testClassifyKillTargetsUnknownOriginRequiresConfirmation() throws {
+        let unknown = makeProcess(origin: .unknown, userID: geteuid())
+
+        let unconfirmed = ProcessMonitor.classifyKillTargets([unknown], confirmedRisky: false)
+        XCTAssertTrue(unconfirmed.allowed.isEmpty)
+        XCTAssertEqual(unconfirmed.risky.count, 1)
+        XCTAssertTrue(unconfirmed.errors[0].contains("confirmation required"))
+
+        let confirmed = ProcessMonitor.classifyKillTargets([unknown], confirmedRisky: true)
+        XCTAssertEqual(confirmed.allowed.count, 1)
+        XCTAssertTrue(confirmed.errors.isEmpty)
+    }
+
+    func testClassifyKillTargetsForeignUserRequiresConfirmation() throws {
+        let foreign = makeProcess(origin: .user, userID: geteuid() + 1)
+
+        let unconfirmed = ProcessMonitor.classifyKillTargets([foreign], confirmedRisky: false)
+        XCTAssertTrue(unconfirmed.allowed.isEmpty)
+        XCTAssertEqual(unconfirmed.risky.count, 1)
+
+        let confirmed = ProcessMonitor.classifyKillTargets([foreign], confirmedRisky: true)
+        XCTAssertEqual(confirmed.allowed.count, 1)
+    }
+
+    @MainActor
+    func testKillProcessesRefusesProtectedWithoutSignaling() async throws {
+        let monitor = ProcessMonitor()
+        let protected = makeProcess(origin: .system)
+
+        let result = await monitor.killProcesses([protected])
+
+        guard case .failure(let error) = result else {
+            return XCTFail("Expected protected kill to fail")
+        }
+        XCTAssertEqual(error.errors.count, 1)
+        XCTAssertTrue(error.errors[0].contains("protected system process"))
+        XCTAssertTrue(error.riskyTargets.isEmpty)
+        XCTAssertTrue(error.survivors.isEmpty)
+    }
+
+    @MainActor
+    func testKillProcessesTerminatesSpawnedProcess() async throws {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/bin/sleep")
+        task.arguments = ["30"]
+        try task.run()
+        defer { task.terminate() }
+
+        let pid = task.processIdentifier
+        let info = DarwinProcess.getProcessInfo(pid: pid)
+        XCTAssertNotNil(info)
+
+        let target = LucidProcess(
+            identity: ProcessIdentity(pid: pid, startTime: info?.startTime ?? 0),
+            name: "sleep",
+            description: "Spawned test sleeper",
+            cpuUsage: 0,
+            memoryBytes: 0,
+            origin: .user,
+            exePath: "/bin/sleep",
+            ports: [],
+            userID: geteuid()
+        )
+
+        let monitor = ProcessMonitor()
+        let result = await monitor.killProcesses([target])
+
+        guard case .success = result else {
+            return XCTFail("Expected kill to succeed, got \(result)")
+        }
+        XCTAssertFalse(DarwinProcess.isAlive(pid: pid))
+    }
+
+    @MainActor
+    func testKillProcessesFailsForExitedProcess() async throws {
+        let monitor = ProcessMonitor()
+        // Unused pid: identity re-check must fail before any signal is sent.
+        let stale = makeProcess(pid: 999_999, userID: geteuid())
+
+        let result = await monitor.killProcesses([stale])
+
+        guard case .failure(let error) = result else {
+            return XCTFail("Expected kill of stale pid to fail")
+        }
+        XCTAssertTrue(error.errors[0].contains("no longer matches"))
+    }
+
+    func testKillProcessPermissionDenied() throws {
+        try XCTSkipIf(geteuid() == 0, "root can signal launchd — EPERM is unreachable")
+
+        let result = DarwinProcess.killProcess(pid: 1)
+
+        guard case .failure(let error) = result else {
+            return XCTFail("Expected signaling launchd to be denied")
+        }
+        guard case .failedToKill(let pid, let description) = error else {
+            return XCTFail("Expected failedToKill, got \(error)")
+        }
+        XCTAssertEqual(pid, 1)
+        XCTAssertFalse(description.isEmpty)
+    }
+
+    func testIsAliveReportsExitedPidAsDead() throws {
+        XCTAssertFalse(DarwinProcess.isAlive(pid: 999_999))
+        XCTAssertTrue(DarwinProcess.isAlive(pid: getpid()))
     }
 }

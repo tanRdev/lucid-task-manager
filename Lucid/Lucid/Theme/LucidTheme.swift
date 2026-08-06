@@ -54,11 +54,6 @@ struct LucidTheme {
         dark: Color(red: 1.00, green: 0.74, blue: 0.32)
     )
 
-    // Legacy aliases
-    static let safetySystem = originSystem
-    static let safetyUser = originUser
-    static let safetyUnknown = originUnknown
-
     // MARK: - Text
     static let textPrimary = Color(
         light: Color(white: 0.10),
@@ -116,19 +111,6 @@ struct LucidTheme {
     static let cornerRadiusS: CGFloat = 4
     static let cornerRadiusM: CGFloat = 8
     static let cornerRadiusL: CGFloat = 12
-
-    // MARK: - Legacy Aliases
-    static let accentOrange = accentPrimary
-    static let accentOrangeLight = accentHover
-    static let backgroundDark = backgroundBase
-    static let backgroundSecondary = backgroundSurface
-    static let backgroundTertiary = backgroundElevated
-    static let borderPrimary = borderDefault
-    static let borderSecondary = borderSubtle
-    static let metricCPU = accentPrimary
-    static let metricMemory = accentPrimary.opacity(0.8)
-    static let metricProcesses = accentPrimary.opacity(0.6)
-    static let metricDisk = accentPrimary.opacity(0.4)
 }
 
 extension Color {

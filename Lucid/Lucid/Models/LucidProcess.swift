@@ -27,9 +27,6 @@ struct LucidProcess: Identifiable, Hashable, Comparable, Sendable {
     var pid: pid_t { identity.pid }
     var startTime: UInt64 { identity.startTime }
 
-    /// Prefer `origin`. Kept for call sites that still use the old name.
-    var safety: ProcessOrigin { origin }
-
     var isProtected: Bool { origin.isProtected }
 
     func hash(into hasher: inout Hasher) {

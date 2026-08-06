@@ -8,8 +8,9 @@ struct ProcessSnapshot: Sendable {
     let processes: [LucidProcess]
     let filterCounts: ProcessMonitor.FilterCounts
     let activePorts: [UInt16]
-    let sampleInstant: ContinuousClock.Instant
     let portError: String?
+    /// Host-wide CPU busy % from `host_processor_info`; nil until the second sample.
+    let hostCPUUsage: Double?
 }
 
 /// Background sampler isolated from UI state.
@@ -19,6 +20,7 @@ actor ProcessSampler {
     private var previousSampleInstant: ContinuousClock.Instant?
     private var cachedPortMap: [pid_t: [UInt16]] = [:]
     private var portSampleCounter = 0
+    private var previousHostCPU: DarwinProcess.HostCPUSample?
 
     func sample(appNameMap: [pid_t: String]) async -> ProcessSnapshot {
         let pids = DarwinProcess.getAllPIDs()
@@ -101,6 +103,17 @@ actor ProcessSampler {
             )
         }
 
+        // Host-wide CPU from the kernel — catches work by processes we cannot
+        // sample (root daemons fail proc_pidinfo and would otherwise read as 0).
+        let hostSample = DarwinProcess.hostCPULoad()
+        let hostCPUUsage: Double?
+        if let current = hostSample, let previous = previousHostCPU {
+            hostCPUUsage = DarwinProcess.hostCPUPercentage(current: current, previous: previous)
+        } else {
+            hostCPUUsage = nil
+        }
+        if let hostSample { previousHostCPU = hostSample }
+
         previousCPUTimes = currentCPUTimes
         previousSampleInstant = now
 
@@ -115,8 +128,8 @@ actor ProcessSampler {
             processes: newProcesses,
             filterCounts: counts,
             activePorts: portSet.sorted(),
-            sampleInstant: now,
-            portError: portError
+            portError: portError,
+            hostCPUUsage: hostCPUUsage
         )
     }
 }
@@ -141,7 +154,6 @@ final class ProcessMonitor {
     var selectedFilter: FilterCategory = .all
     var filterCounts = FilterCounts()
     var activePorts: [UInt16] = []
-    var assistiveTechnologyActive = false
 
     struct FilterCounts: Sendable {
         var total: Int = 0
@@ -153,8 +165,6 @@ final class ProcessMonitor {
     // MARK: - Private State
     @ObservationIgnored private var timer: DispatchSourceTimer?
     @ObservationIgnored private var refreshTask: Task<Void, Never>?
-    @ObservationIgnored private var previousCPUHistory: [Double] = []
-    @ObservationIgnored private var previousMemoryHistory: [Double] = []
     @ObservationIgnored private let foregroundPollInterval: TimeInterval = 2.5
     @ObservationIgnored private let backgroundPollInterval: TimeInterval = 6.0
     @ObservationIgnored private let logger = Logger(subsystem: "com.tan.lucid", category: "ProcessMonitor")
@@ -211,7 +221,7 @@ final class ProcessMonitor {
     }
 
     func refresh() {
-        if assistiveTechnologyActive || isRefreshing {
+        if isRefreshing {
             return
         }
 
@@ -254,41 +264,115 @@ final class ProcessMonitor {
                 self.activePorts = snapshot.activePorts
                 self.lastUpdated = Date()
                 self.isLoading = false
-                self.updateSystemStats(using: snapshot.processes)
+                self.updateSystemStats(using: snapshot)
             }
         }
     }
 
-    func setAssistiveTechnologyActive(_ active: Bool) {
-        assistiveTechnologyActive = active
-        if !active && isRunning {
-            refresh()
+    // MARK: - Termination
+
+    /// Why a process needs an explicit extra confirmation before killing,
+    /// or nil when the standard single confirmation is sufficient.
+    static func riskFactor(for process: LucidProcess, currentUserID: uid_t = geteuid()) -> String? {
+        if process.origin.requiresConfirmation {
+            return "origin is unknown"
         }
+        if process.userID != currentUserID {
+            return "owned by uid \(process.userID), not the current user (\(currentUserID))"
+        }
+        return nil
     }
 
-    @discardableResult
-    func killProcess(_ process: LucidProcess) -> Result<Void, DarwinError> {
-        guard process.origin.allowsTermination else {
-            return .failure(.protected(pid: process.pid, name: process.name))
-        }
-        guard DarwinProcess.matchesIdentity(process.identity, expectedName: process.name) else {
-            return .failure(.identityMismatch(pid: process.pid))
-        }
-        return DarwinProcess.killProcess(pid: process.pid)
-    }
-
-    func killProcesses(_ processes: [LucidProcess]) -> Result<Void, KillErrors> {
+    /// Pure decision split applied before any signal is sent — unit-testable.
+    static func classifyKillTargets(
+        _ processes: [LucidProcess],
+        confirmedRisky: Bool,
+        currentUserID: uid_t = geteuid()
+    ) -> (allowed: [LucidProcess], errors: [String], risky: [LucidProcess]) {
+        var allowed: [LucidProcess] = []
         var errors: [String] = []
+        var risky: [LucidProcess] = []
+
         for process in processes {
             if process.origin.isProtected {
                 errors.append("\(process.name): protected system process")
                 continue
             }
-            if case .failure(let error) = killProcess(process) {
+            if !confirmedRisky,
+               let risk = riskFactor(for: process, currentUserID: currentUserID) {
+                risky.append(process)
+                errors.append("\(process.name): \(risk) — confirmation required")
+                continue
+            }
+            allowed.append(process)
+        }
+        return (allowed, errors, risky)
+    }
+
+    /// Identity re-check (PID-reuse guard) then SIGTERM, or SIGKILL when `force`.
+    @discardableResult
+    private func signalKill(_ process: LucidProcess, force: Bool) -> Result<Void, DarwinError> {
+        guard DarwinProcess.matchesIdentity(process.identity, expectedName: process.name) else {
+            return .failure(.identityMismatch(pid: process.pid))
+        }
+        return DarwinProcess.killProcess(pid: process.pid, force: force)
+    }
+
+    /// Signals every target, then verifies each one actually exited.
+    /// All failures aggregate into a single `KillErrors`:
+    /// `riskyTargets` need confirmation, `survivors` outlived the signal.
+    @discardableResult
+    func killProcesses(
+        _ processes: [LucidProcess],
+        confirmedRisky: Bool = false,
+        force: Bool = false
+    ) async -> Result<Void, KillErrors> {
+        let classification = Self.classifyKillTargets(
+            processes,
+            confirmedRisky: confirmedRisky
+        )
+        var errors = classification.errors
+        var signaled: [LucidProcess] = []
+
+        for process in classification.allowed {
+            switch signalKill(process, force: force) {
+            case .success:
+                signaled.append(process)
+            case .failure(let error):
                 errors.append("\(process.name): \(error.localizedDescription)")
             }
         }
-        return errors.isEmpty ? .success(()) : .failure(KillErrors(errors: errors))
+
+        var survivors: [LucidProcess] = []
+        if !signaled.isEmpty {
+            survivors = await waitForExit(signaled, timeout: .milliseconds(1200))
+            for process in survivors {
+                let signal = force ? "SIGKILL" : "SIGTERM"
+                errors.append("\(process.name): still running after \(signal)")
+            }
+        }
+
+        guard errors.isEmpty else {
+            return .failure(
+                KillErrors(
+                    errors: errors,
+                    riskyTargets: classification.risky,
+                    survivors: survivors
+                )
+            )
+        }
+        return .success(())
+    }
+
+    /// Polls until every signaled process exits or `timeout` elapses; returns survivors.
+    private func waitForExit(_ processes: [LucidProcess], timeout: Duration) async -> [LucidProcess] {
+        let deadline = ContinuousClock.now + timeout
+        var remaining = processes
+        while !remaining.isEmpty, ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(100))
+            remaining = remaining.filter { DarwinProcess.isAlive(pid: $0.pid) }
+        }
+        return remaining
     }
 
     func killableProcesses(onPort port: UInt16) -> [LucidProcess] {
@@ -301,6 +385,13 @@ final class ProcessMonitor {
 
     struct KillErrors: Error, LocalizedError {
         let errors: [String]
+        /// Targets refused because they need an explicit extra confirmation
+        /// (unknown origin or owned by another user).
+        var riskyTargets: [LucidProcess] = []
+        /// Targets that were signaled but still alive after the grace period —
+        /// candidates for an explicit SIGKILL escalation.
+        var survivors: [LucidProcess] = []
+
         var errorDescription: String? {
             errors.joined(separator: "\n")
         }
@@ -309,29 +400,21 @@ final class ProcessMonitor {
         }
     }
 
-    private func updateSystemStats(using processes: [LucidProcess]) {
+    private func updateSystemStats(using snapshot: ProcessSnapshot) {
         let memory = DarwinProcess.hostMemoryUsedBytes()
         let totalMemory = memory?.total ?? ProcessInfo.processInfo.physicalMemory
         let usedMemory = memory?.used ?? 0
-        let coreCount = ProcessInfo.processInfo.activeProcessorCount
-        let totalCPU = DarwinProcess.calculateSystemCPUPercentage(
-            processCPUPercentages: processes.map(\.cpuUsage),
-            coreCount: coreCount
+
+        // Prefer the kernel's host-wide figure; fall back to the per-process
+        // sum for the first sample (no delta yet) or if host_processor_info fails.
+        let totalCPU = snapshot.hostCPUUsage ?? DarwinProcess.calculateSystemCPUPercentage(
+            processCPUPercentages: snapshot.processes.map(\.cpuUsage),
+            coreCount: ProcessInfo.processInfo.activeProcessorCount
         )
 
         let memoryPercent = totalMemory > 0
             ? (Double(usedMemory) / Double(totalMemory)) * 100
             : 0
-
-        var cpuHistory = previousCPUHistory
-        cpuHistory.append(totalCPU)
-        if cpuHistory.count > 12 { cpuHistory.removeFirst() }
-        previousCPUHistory = cpuHistory
-
-        var memoryHistory = previousMemoryHistory
-        memoryHistory.append(memoryPercent)
-        if memoryHistory.count > 12 { memoryHistory.removeFirst() }
-        previousMemoryHistory = memoryHistory
 
         stats = SystemStats(
             cpuUsage: totalCPU,
@@ -340,7 +423,5 @@ final class ProcessMonitor {
             totalMemoryBytes: totalMemory,
             timestamp: Date()
         )
-        stats.cpuHistory = cpuHistory
-        stats.memoryHistory = memoryHistory
     }
 }

@@ -15,6 +15,13 @@ enum ProcessOrigin: String, Codable, Hashable, Sendable {
         !isProtected
     }
 
+    /// Origins whose termination is permitted but only after an explicit
+    /// extra confirmation step — the classification evidence was too weak
+    /// to trust a single-click kill.
+    var requiresConfirmation: Bool {
+        self == .unknown
+    }
+
     var color: Color {
         switch self {
         case .system:
@@ -48,6 +55,3 @@ enum ProcessOrigin: String, Codable, Hashable, Sendable {
         }
     }
 }
-
-/// Legacy alias used during migration; prefer `ProcessOrigin`.
-typealias Safety = ProcessOrigin

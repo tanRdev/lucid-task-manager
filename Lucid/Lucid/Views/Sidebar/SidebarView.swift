@@ -4,11 +4,27 @@ struct SidebarView: View {
     @Environment(ProcessMonitor.self) var monitor
     @State private var portToKill: UInt16?
     @State private var killError: String?
+    @State private var riskyKillTargets: [LucidProcess] = []
+    @State private var forceQuitTargets: [LucidProcess] = []
 
     private var killErrorBinding: Binding<Bool> {
         Binding(
             get: { killError != nil },
             set: { if !$0 { killError = nil } }
+        )
+    }
+
+    private var riskyKillBinding: Binding<Bool> {
+        Binding(
+            get: { !riskyKillTargets.isEmpty },
+            set: { if !$0 { riskyKillTargets = [] } }
+        )
+    }
+
+    private var forceQuitBinding: Binding<Bool> {
+        Binding(
+            get: { !forceQuitTargets.isEmpty },
+            set: { if !$0 { forceQuitTargets = [] } }
         )
     }
 
@@ -109,20 +125,39 @@ struct SidebarView: View {
                     "Kill \(LucidFormat.count(killable.count)) Process\(killable.count == 1 ? "" : "es")",
                     role: .destructive
                 ) {
-                    if case .failure(let error) = monitor.killProcesses(killable) {
-                        killError = error.localizedDescription
-                    } else {
-                        Task { @MainActor in
-                            try? await Task.sleep(for: .milliseconds(500))
-                            monitor.refresh()
-                        }
-                    }
                     portToKill = nil
+                    runKill(killable)
                 }
                 Button("Cancel", role: .cancel) { portToKill = nil }
             }
         } message: { port in
             portKillMessage(for: port)
+        }
+        .confirmationDialog(
+            "Confirm Risky Termination",
+            isPresented: riskyKillBinding
+        ) {
+            Button("Kill Anyway", role: .destructive) {
+                let targets = riskyKillTargets
+                riskyKillTargets = []
+                runKill(targets, confirmedRisky: true)
+            }
+            Button("Cancel", role: .cancel) { riskyKillTargets = [] }
+        } message: {
+            Text(riskyKillMessage)
+        }
+        .confirmationDialog(
+            "Process Still Running",
+            isPresented: forceQuitBinding
+        ) {
+            Button("Force Quit (SIGKILL)", role: .destructive) {
+                let targets = forceQuitTargets
+                forceQuitTargets = []
+                runKill(targets, confirmedRisky: true, force: true)
+            }
+            Button("Cancel", role: .cancel) { forceQuitTargets = [] }
+        } message: {
+            Text(forceQuitMessage)
         }
         .alert("Kill Failed", isPresented: killErrorBinding) {
             Button("OK") { killError = nil }
@@ -177,6 +212,55 @@ struct SidebarView: View {
             )
             Spacer(minLength: 0)
         }
+    }
+
+    private func runKill(
+        _ targets: [LucidProcess],
+        confirmedRisky: Bool = false,
+        force: Bool = false
+    ) {
+        Task { @MainActor in
+            let result = await monitor.killProcesses(
+                targets,
+                confirmedRisky: confirmedRisky,
+                force: force
+            )
+            switch result {
+            case .success:
+                monitor.refresh()
+            case .failure(let error):
+                if !error.riskyTargets.isEmpty {
+                    riskyKillTargets = error.riskyTargets
+                } else if !error.survivors.isEmpty {
+                    forceQuitTargets = error.survivors
+                } else {
+                    killError = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    private var riskyKillMessage: String {
+        let lines = riskyKillTargets.prefix(8).map { process -> String in
+            let risk = ProcessMonitor.riskFactor(for: process) ?? "unverified"
+            return "• \(process.name) (PID \(LucidFormat.pid(process.pid))) — \(risk)"
+        }
+        var message = "These processes could not be classified with confidence:\n"
+            + lines.joined(separator: "\n")
+        if riskyKillTargets.count > 8 {
+            message += "\n• …and \(LucidFormat.count(riskyKillTargets.count - 8)) more"
+        }
+        message += "\n\nTerminating them may destabilize your system. Kill anyway?"
+        return message
+    }
+
+    private var forceQuitMessage: String {
+        let lines = forceQuitTargets.prefix(8).map {
+            "• \($0.name) (PID \(LucidFormat.pid($0.pid)))"
+        }
+        var message = "Still running after the terminate request:\n" + lines.joined(separator: "\n")
+        message += "\n\nForce quitting skips graceful shutdown and may lose unsaved data."
+        return message
     }
 
     private func portKillMessage(for port: UInt16) -> Text {

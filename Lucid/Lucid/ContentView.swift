@@ -24,21 +24,6 @@ struct ContentView: View {
         }
         .navigationSplitViewStyle(.balanced)
         .preferredColorScheme(colorScheme)
-        .onAppear {
-            updateAssistiveTechFlag()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: NSWorkspace.didActivateApplicationNotification)) { _ in
-            updateAssistiveTechFlag()
-        }
-    }
-
-    private func updateAssistiveTechFlag() {
-        // Pause aggressive refresh while VoiceOver (or similar) is running.
-        let running = NSWorkspace.shared.runningApplications.contains {
-            let id = $0.bundleIdentifier ?? ""
-            return id == "com.apple.VoiceOver" || id.contains("VoiceOver")
-        }
-        monitor.setAssistiveTechnologyActive(running)
     }
 }
 
@@ -74,6 +59,8 @@ struct DetailView: View {
     @State private var sortAscending = false
     @State private var killTarget: LucidProcess?
     @State private var multiKillTargets: [LucidProcess] = []
+    @State private var riskyKillTargets: [LucidProcess] = []
+    @State private var forceQuitTargets: [LucidProcess] = []
     @State private var selection = Set<ProcessIdentity>()
     @State private var killError: String?
     @State private var inspectedProcess: LucidProcess?
@@ -97,6 +84,20 @@ struct DetailView: View {
         )
     }
 
+    private var riskyKillBinding: Binding<Bool> {
+        Binding(
+            get: { !riskyKillTargets.isEmpty },
+            set: { if !$0 { riskyKillTargets = [] } }
+        )
+    }
+
+    private var forceQuitBinding: Binding<Bool> {
+        Binding(
+            get: { !forceQuitTargets.isEmpty },
+            set: { if !$0 { forceQuitTargets = [] } }
+        )
+    }
+
     private var selectedProcess: LucidProcess? {
         if let inspected = inspectedProcess,
            let match = displayedProcesses.first(where: { $0.identity == inspected.identity }) {
@@ -109,6 +110,13 @@ struct DetailView: View {
     }
 
     var body: some View {
+        withKillDialogs(mainColumn)
+            .overlay(alignment: .bottom) {
+                errorBanner
+            }
+    }
+
+    private var mainColumn: some View {
         Group {
             if monitor.isLoading && monitor.processes.isEmpty {
                 ContentUnavailableView("Loading processes…", systemImage: "arrow.triangle.2.circlepath")
@@ -141,53 +149,7 @@ struct DetailView: View {
         .onChange(of: sortKey) { _, _ in rebuildDisplayedProcesses() }
         .onChange(of: sortAscending) { _, _ in rebuildDisplayedProcesses() }
         .toolbar {
-            ToolbarItemGroup(placement: .primaryAction) {
-                Picker("Sort", selection: $sortKey) {
-                    ForEach(ProcessSortKey.allCases) { key in
-                        Text(key.label).tag(key)
-                    }
-                }
-                .pickerStyle(.menu)
-                .help("Sort processes")
-
-                Button {
-                    sortAscending.toggle()
-                } label: {
-                    Label(
-                        sortAscending ? "Ascending" : "Descending",
-                        systemImage: sortAscending ? "arrow.up" : "arrow.down"
-                    )
-                }
-                .help(sortAscending ? "Sort ascending" : "Sort descending")
-
-                Button {
-                    if monitor.isRunning {
-                        monitor.stop()
-                    } else {
-                        monitor.start()
-                    }
-                } label: {
-                    Label(
-                        monitor.isRunning ? "Pause" : "Resume",
-                        systemImage: monitor.isRunning ? "pause.fill" : "play.fill"
-                    )
-                }
-                .help(monitor.isRunning ? "Pause monitoring" : "Resume monitoring")
-
-                Button {
-                    monitor.refresh()
-                } label: {
-                    Label("Refresh", systemImage: "arrow.clockwise")
-                }
-                .help("Refresh now")
-
-                Button {
-                    inspectorPresented.toggle()
-                } label: {
-                    Label("Inspector", systemImage: "sidebar.trailing")
-                }
-                .help("Toggle process inspector")
-            }
+            toolbarContent
         }
         .inspector(isPresented: $inspectorPresented) {
             ProcessInspectorView(
@@ -206,49 +168,132 @@ struct DetailView: View {
                 inspectedProcess = process
             }
         }
-        .confirmationDialog(
-            killDialogTitle,
-            isPresented: killConfirmationBinding,
-            presenting: killTarget ?? multiKillTargets.first
-        ) { _ in
-            killButton
-        } message: { process in
-            killDialogMessage(for: process)
-        }
-        .alert("Kill Failed", isPresented: killErrorBinding) {
-            Button("OK") { killError = nil }
-        } message: {
-            Text(killError ?? "")
-        }
-        .overlay(alignment: .bottom) {
-            if let error = monitor.lastError {
-                HStack(spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(LucidTheme.statusWarning)
-                    Text(error)
-                        .font(.caption)
-                        .foregroundStyle(.primary)
-                        .lineLimit(2)
-                    Spacer(minLength: 8)
-                    Button {
-                        monitor.lastError = nil
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                    .help("Dismiss")
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .strokeBorder(LucidTheme.borderSubtle, lineWidth: 0.5)
-                )
-                .padding()
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+    }
+
+    private func withKillDialogs(_ content: some View) -> some View {
+        content
+            .confirmationDialog(
+                killDialogTitle,
+                isPresented: killConfirmationBinding,
+                presenting: killTarget ?? multiKillTargets.first
+            ) { _ in
+                killButton
+            } message: { process in
+                killDialogMessage(for: process)
             }
+            .confirmationDialog(
+                "Confirm Risky Termination",
+                isPresented: riskyKillBinding
+            ) {
+                Button("Kill Anyway", role: .destructive) {
+                    let targets = riskyKillTargets
+                    riskyKillTargets = []
+                    runKill(targets, confirmedRisky: true)
+                }
+                Button("Cancel", role: .cancel) { riskyKillTargets = [] }
+            } message: {
+                Text(riskyKillMessage)
+            }
+            .confirmationDialog(
+                "Process Still Running",
+                isPresented: forceQuitBinding
+            ) {
+                Button("Force Quit (SIGKILL)", role: .destructive) {
+                    let targets = forceQuitTargets
+                    forceQuitTargets = []
+                    runKill(targets, confirmedRisky: true, force: true)
+                }
+                Button("Cancel", role: .cancel) { forceQuitTargets = [] }
+            } message: {
+                Text(forceQuitMessage)
+            }
+            .alert("Kill Failed", isPresented: killErrorBinding) {
+                Button("OK") { killError = nil }
+            } message: {
+                Text(killError ?? "")
+            }
+    }
+
+    @ViewBuilder
+    private var errorBanner: some View {
+        if let error = monitor.lastError {
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(LucidTheme.statusWarning)
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+                Spacer(minLength: 8)
+                Button {
+                    monitor.lastError = nil
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Dismiss")
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .strokeBorder(LucidTheme.borderSubtle, lineWidth: 0.5)
+            )
+            .padding()
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItemGroup(placement: .primaryAction) {
+            Picker("Sort", selection: $sortKey) {
+                ForEach(ProcessSortKey.allCases) { key in
+                    Text(key.label).tag(key)
+                }
+            }
+            .pickerStyle(.menu)
+            .help("Sort processes")
+
+            Button {
+                sortAscending.toggle()
+            } label: {
+                Label(
+                    sortAscending ? "Ascending" : "Descending",
+                    systemImage: sortAscending ? "arrow.up" : "arrow.down"
+                )
+            }
+            .help(sortAscending ? "Sort ascending" : "Sort descending")
+
+            Button {
+                if monitor.isRunning {
+                    monitor.stop()
+                } else {
+                    monitor.start()
+                }
+            } label: {
+                Label(
+                    monitor.isRunning ? "Pause" : "Resume",
+                    systemImage: monitor.isRunning ? "pause.fill" : "play.fill"
+                )
+            }
+            .help(monitor.isRunning ? "Pause monitoring" : "Resume monitoring")
+
+            Button {
+                monitor.refresh()
+            } label: {
+                Label("Refresh", systemImage: "arrow.clockwise")
+            }
+            .help("Refresh now")
+
+            Button {
+                inspectorPresented.toggle()
+            } label: {
+                Label("Inspector", systemImage: "sidebar.trailing")
+            }
+            .help("Toggle process inspector")
         }
     }
 
@@ -412,16 +457,64 @@ struct DetailView: View {
             processesToKill = multiKillTargets
             multiKillTargets = []
         }
+        runKill(processesToKill)
+    }
 
-        if case .failure(let error) = monitor.killProcesses(processesToKill) {
-            killError = error.localizedDescription
-        } else {
+    private func runKill(
+        _ targets: [LucidProcess],
+        confirmedRisky: Bool = false,
+        force: Bool = false
+    ) {
+        Task { @MainActor in
+            let result = await monitor.killProcesses(
+                targets,
+                confirmedRisky: confirmedRisky,
+                force: force
+            )
+            handleKillResult(result)
+        }
+    }
+
+    private func handleKillResult(_ result: Result<Void, ProcessMonitor.KillErrors>) {
+        switch result {
+        case .success:
             selection.removeAll()
-            Task { @MainActor in
-                try? await Task.sleep(for: .milliseconds(500))
-                monitor.refresh()
+            monitor.refresh()
+        case .failure(let error):
+            if !error.riskyTargets.isEmpty {
+                riskyKillTargets = error.riskyTargets
+            } else if !error.survivors.isEmpty {
+                forceQuitTargets = error.survivors
+            } else {
+                killError = error.localizedDescription
             }
         }
+    }
+
+    private var riskyKillMessage: String {
+        let lines = riskyKillTargets.prefix(8).map { process -> String in
+            let risk = ProcessMonitor.riskFactor(for: process) ?? "unverified"
+            return "• \(process.name) (PID \(LucidFormat.pid(process.pid))) — \(risk)"
+        }
+        var message = "These processes could not be classified with confidence:\n"
+            + lines.joined(separator: "\n")
+        if riskyKillTargets.count > 8 {
+            message += "\n• …and \(LucidFormat.count(riskyKillTargets.count - 8)) more"
+        }
+        message += "\n\nTerminating them may destabilize your system. Kill anyway?"
+        return message
+    }
+
+    private var forceQuitMessage: String {
+        let lines = forceQuitTargets.prefix(8).map {
+            "• \($0.name) (PID \(LucidFormat.pid($0.pid)))"
+        }
+        var message = "Still running after the terminate request:\n" + lines.joined(separator: "\n")
+        if forceQuitTargets.count > 8 {
+            message += "\n• …and \(LucidFormat.count(forceQuitTargets.count - 8)) more"
+        }
+        message += "\n\nForce quitting skips graceful shutdown and may lose unsaved data."
+        return message
     }
 
     private func killDialogMessage(for process: LucidProcess) -> some View {

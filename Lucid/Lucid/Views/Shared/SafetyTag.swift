@@ -18,5 +18,3 @@ struct OriginTag: View {
         .accessibilityLabel("Origin \(origin.label)")
     }
 }
-
-typealias SafetyTag = OriginTag

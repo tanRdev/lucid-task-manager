@@ -20,14 +20,11 @@ let package = Package(
             path: "Lucid",
             exclude: [
                 "Info.plist",
-                "Lucid.entitlements",
-                "BridgingHeader.h"
-            ],
-            resources: [
-                .copy("Assets.xcassets")
+                "Lucid.entitlements"
             ],
             swiftSettings: [
-                .swiftLanguageMode(.v5)
+                .swiftLanguageMode(.v5),
+                .enableUpcomingFeature("StrictConcurrency")
             ]
         ),
         .testTarget(
@@ -35,7 +32,8 @@ let package = Package(
             dependencies: ["Lucid"],
             path: "LucidTests",
             swiftSettings: [
-                .swiftLanguageMode(.v5)
+                .swiftLanguageMode(.v5),
+                .enableUpcomingFeature("StrictConcurrency")
             ]
         )
     ]

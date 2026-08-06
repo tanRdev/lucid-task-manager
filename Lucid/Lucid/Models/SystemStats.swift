@@ -7,10 +7,6 @@ struct SystemStats: Hashable {
     let totalMemoryBytes: UInt64
     let timestamp: Date
 
-    // History arrays for sparklines (12 entries)
-    var cpuHistory: [Double] = []
-    var memoryHistory: [Double] = []
-
     var memoryMB: Double {
         Double(memoryBytes) / (1024 * 1024)
     }
